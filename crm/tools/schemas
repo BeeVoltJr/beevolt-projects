@@ -1,0 +1,15 @@
+CREATE TABLE campaign_followup
+(
+  	lead_uid 	INT,
+	actid	 	INT,
+	status	 	INT,
+	attempt  	INT,
+	logdate	 	TEXT,
+	name	 	TEXT,
+	email		TEXT,
+	actfield	TEXT,
+	insight		TEXT,
+	service		TEXT
+);
+
+

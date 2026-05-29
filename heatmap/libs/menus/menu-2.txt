@@ -1,0 +1,14 @@
+<bounds>
+<br>
+<center>Menu | Listas Telefônicas<br>
+<br>
+<center>1. Incluir Novo Nome        2. Incluir Telefone    
+<br>
+<center>3. Excluir Telefone         4. Excluir Nome        
+<br>
+<center>5. Consultar Telefone       6. Consultar Dicionário
+<br><br>
+<center>[ i ] '/quit' para encerrar o programa
+<br>
+<bounds>
+<request-input-int>

@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+
+      margin: 0;
+
+      padding: 20px;
+
+      background: #383838;
+
+      color: #FFFFFF;
+    }
+
+    .container {
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 14px;
+    }
+
+    .brand {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 12px;
+
+      margin-bottom: 10px;
+    }
+
+    .brand-logo {
+
+      width: 75px;
+
+      height: 75px;
+
+      object-fit: contain;
+    }
+
+    .brand-title {
+
+      font-size: 20px;
+
+      font-weight: bold;
+
+      color: #FFAA59;
+    }
+
+    .brand-subtitle {
+
+      font-size: 12px;
+
+      color: #FFD793;
+    }
+
+    .field {
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 6px;
+    }
+
+    label {
+
+      font-size: 15px;
+
+      font-weight: 600;
+    }
+
+    .required {
+      color: #ff2523;
+    }
+
+    .helper {
+
+      font-size: 11px;
+
+      color: #CDCDCD;
+
+      margin-top: -2px;
+
+      line-height: 1.4;
+    }
+
+    input,
+    textarea,
+    select {
+
+      width: 100%;
+
+      padding: 10px 12px;
+
+      border: 1px solid #FFAA59;
+
+      border-radius: 10px;
+
+      background: #FFEFEE;
+
+      font-size: 13px;
+
+      transition: 0.2s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+
+      outline: none;
+
+      border-color: #f97316;
+
+      box-shadow:
+        0 0 0 3px rgba(249,115,22,0.15);
+    }
+
+    textarea {
+
+      resize: vertical;
+
+      min-height: 80px;
+    }
+
+    .invalid {
+
+      border-color: #ff2523 !important;
+
+      box-shadow:
+        0 0 0 5px rgba(255, 44, 44, 0.315);
+    }
+
+    button {
+
+      margin-top: 10px;
+
+      background: #ff7733;
+
+      color: white;
+
+      border: none;
+
+      border-radius: 12px;
+
+      padding: 12px;
+
+      font-size: 14px;
+
+      font-weight: bold;
+
+      cursor: pointer;
+
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #ea580c;
+    }
+
+    button:disabled {
+
+      opacity: 0.7;
+
+      cursor: not-allowed;
+    }
+
+    .loading {
+
+      display: none;
+
+      text-align: center;
+
+      font-size: 13px;
+
+      color: #64748b;
+    }
+
+    .success {
+
+      display: none;
+
+      background: #dcfce7;
+
+      color: #166534;
+
+      padding: 10px;
+
+      border-radius: 10px;
+
+      font-size: 13px;
+    }
+
+    .error {
+
+      display: none;
+
+      background: #fee2e2;
+
+      color: #991b1b;
+
+      padding: 10px;
+
+      border-radius: 10px;
+
+      font-size: 13px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- BRAND -->
+
+    <div class="brand">
+
+      <!-- TROQUE PELA URL DA LOGO -->
+
+      <img
+        src="https://drive.google.com/thumbnail?id=1OdblX03EtwBizB07s7bdcytNyJU2i7mp"
+        class="brand-logo"
+      >
+
+      <div>
+
+        <div class="brand-title">
+          BeeVolt CRM
+        </div>
+
+        <div class="brand-subtitle">
+          Cadastro de novas empresas
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- NOME -->
+
+    <div class="field">
+
+      <label>
+        Nome da Empresa
+        <span class="required">*</span>
+      </label>
+
+      <input id="name">
+
+      <div class="helper">
+        Nome oficial da empresa.
+      </div>
+      
+
+    </div>
+
+    <!-- EMAIL -->
+
+    <div class="field">
+
+      <label>
+        Email
+        <span class="required">*</span>
+      </label>
+
+      <input
+        id="email"
+        type="email"
+      >
+
+      <div class="helper">
+        Email corporativo da empresa.
+      </div>
+
+    </div>
+
+    <!-- TELEFONE -->
+
+    <div class="field">
+
+      <label>
+        Telefone
+      </label>
+
+      <input
+        id="phone"
+        maxlength="15"
+        placeholder="(31) 99999-9999"
+      >
+
+      <div class="helper">
+        WhatsApp ou telefone comercial.
+      </div>
+
+    </div>
+
+    <!-- SITE -->
+
+    <div class="field">
+
+      <label>
+        Site
+      </label>
+
+      <input
+        id="website"
+        placeholder="https://empresa.com.br"
+      >
+
+      <div class="helper">
+        Site oficial da empresa.
+      </div>
+
+    </div>
+
+    <!-- CAMPO -->
+
+    <div class="field">
+
+      <label>
+        Campo de atuação
+        <span class="required">*</span>
+      </label>
+
+      <textarea id="field"></textarea>
+
+      <div class="helper">
+        Segmento e área de atuação da empresa.
+      </div>
+
+    </div>
+
+    <!-- INSIGHT -->
+
+    <div class="field">
+
+      <label>
+        Insight da empresa
+        <span class="required">*</span>
+      </label>
+
+      <textarea id="insight"></textarea>
+
+      <div class="helper">
+        Informações úteis para personalizar o contato.
+      </div>
+
+    </div>
+
+    <!-- SERVIÇOS -->
+
+    <div class="field">
+
+      <label>
+        Serviços prestados
+        <span class="required">*</span>
+      </label>
+
+      <textarea id="services"></textarea>
+
+      <div class="helper">
+        Principais serviços oferecidos pela empresa.
+      </div>
+
+    </div>
+
+    <!-- COLABORADOR -->
+
+    <div class="field">
+
+      <label>
+        Colaborador
+        <span class="required">*</span>
+      </label>
+
+      <select id="owner">
+
+        <option value="">
+          Selecione um colaborador
+        </option>
+
+        <option>
+          Christopher Andrade
+        </option>
+
+        <option>
+          João
+        </option>
+
+        <option>
+          Maria
+        </option>
+
+      </select>
+
+      <div class="helper">
+        Responsável pelo lead.
+      </div>
+
+    </div>
+
+    <!-- ALERTAS -->
+
+    <div
+      class="success"
+      id="success"
+    >
+      Empresa adicionada com sucesso.
+    </div>
+
+    <div
+      class="error"
+      id="error"
+    >
+    </div>
+    
+    <!-- BOTÃO -->
+
+    <button
+      id="submitButton"
+      onclick="submitForm()"
+    >
+      Adicionar Empresa
+    </button>
+
+    <!-- LOADING -->
+
+    <div
+      class="loading"
+      id="loading"
+    >
+      Enviando informações...
+    </div>
+
+  </div>
+
+  <script>
+
+    document
+      .getElementById("phone")
+      .addEventListener(
+        "input",
+        phoneMask
+      );
+
+    function phoneMask(e)
+    {
+      let value =
+        e.target.value.replace(/\D/g, "");
+
+      value =
+        value.replace(
+          /^(\d{2})(\d)/g,
+          "($1) $2"
+        );
+
+      value =
+        value.replace(
+          /(\d{5})(\d)/,
+          "$1-$2"
+        );
+
+      e.target.value = value;
+    }
+
+    function isValidEmail(email)
+    {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        .test(email);
+    }
+
+    function clearInvalid()
+    {
+      document
+        .querySelectorAll(
+          "input, textarea, select"
+        )
+
+        .forEach((field) =>
+        {
+          field.classList.remove(
+            "invalid"
+          );
+        });
+    }
+
+    function invalidate(id)
+    {
+      document
+        .getElementById(id)
+        .classList.add("invalid");
+    }
+
+    function showError(message)
+    {
+      const error =
+        document.getElementById(
+          "error"
+        );
+
+      error.innerText = message;
+
+      error.style.display = "block";
+    }
+
+    function hideMessages()
+    {
+      document.getElementById(
+        "error"
+      ).style.display = "none";
+
+      document.getElementById(
+        "success"
+      ).style.display = "none";
+    }
+
+    function submitForm()
+    {
+      clearInvalid();
+
+      hideMessages();
+
+      const button =
+        document.getElementById(
+          "submitButton"
+        );
+
+      const data =
+      {
+        name:
+          document
+            .getElementById("name")
+            .value
+            .trim(),
+
+        email:
+          document
+            .getElementById("email")
+            .value
+            .trim(),
+
+        phone:
+          document
+            .getElementById("phone")
+            .value
+            .trim(),
+
+        website:
+          document
+            .getElementById("website")
+            .value
+            .trim(),
+
+        field:
+          document
+            .getElementById("field")
+            .value
+            .trim(),
+
+        insight:
+          document
+            .getElementById("insight")
+            .value
+            .trim(),
+
+        services:
+          document
+            .getElementById("services")
+            .value
+            .trim(),
+
+        owner:
+          document
+            .getElementById("owner")
+            .value
+      };
+
+      if (!data.email && !data.phone)
+      {
+        invalidate("email");
+
+        invalidate("phone");
+
+        showError(
+          "Informe email ou telefone."
+        );
+
+        return;
+      }
+
+      if (data.email)
+      {
+        if (!isValidEmail(data.email))
+        {
+          invalidate("email");
+
+          showError(
+            "Email inválido."
+          );
+
+          return;
+        }
+
+        if (
+        !data.name ||
+          !data.field ||
+          !data.insight ||
+          !data.services
+        )
+        {
+          invalidate("name");
+            
+          invalidate("field");
+
+          invalidate("insight");
+
+          invalidate("services");
+
+          showError(
+            "Preencha os campos necessários para campanhas de email."
+          );
+
+          return;
+        }
+      }
+
+      if (data.owner === "")
+      {
+        invalidate("owner");
+
+        showError(
+          "Selecione um colaborador."
+        );
+
+        return;
+      }
+
+      button.disabled = true;
+
+      button.innerText =
+        "Enviando...";
+
+      document.getElementById(
+        "loading"
+      ).style.display = "block";
+
+      google.script.run
+
+        .withSuccessHandler((response) =>
+        {
+          button.disabled = false;
+
+          button.innerText =
+            "Adicionar Empresa";
+
+          document.getElementById(
+            "loading"
+          ).style.display = "none";
+
+          if (response.success)
+          {
+            document.getElementById(
+              "success"
+            ).style.display = "block";
+
+            // LIMPAR FORMULÁRIO
+
+            document
+              .querySelectorAll(
+                "input, textarea"
+              )
+
+              .forEach((field) =>
+              {
+                field.value = "";
+              });
+
+            document
+              .getElementById(
+                "owner"
+              )
+              .value = "";
+          }
+          else
+          {
+            showError(
+              response.message
+            );
+          }
+        })
+
+        .withFailureHandler((err) =>
+        {
+          button.disabled = false;
+
+          button.innerText =
+            "Adicionar Empresa";
+
+          document.getElementById(
+            "loading"
+          ).style.display = "none";
+
+          showError(
+            "Erro interno."
+          );
+
+          console.error(err);
+        })
+
+        .AddCompany(data);
+    }
+
+  </script>
+
+</body>
+</html>
