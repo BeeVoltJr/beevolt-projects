@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <style>
+        * 
+        {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body 
+        {
+            margin: 0;
+            padding: 50px;
+            background: #332A21;
+            color: #FFFFFF;
+        }
+
+        .container 
+        {
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+        }
+
+        .header 
+        {
+            display: flex;
+            align-items: end;
+            align-self: center;
+            gap: 12px;
+            margin-bottom: 5px;
+        }
+
+        .header-logo 
+        {
+            width: 150px;
+            height: 150px;
+            background-color: #FFD793;
+            box-shadow:  5px 10px 10px #000001;
+            border-radius: 15px;
+            object-fit: contain;
+        }
+
+        .header-title 
+        {
+            font-size: 40px;
+            font-weight: bold;
+            text-shadow:  5px 5px 5px #000001;
+            color: #FFAA59;
+        }
+
+        .header-subtitle 
+        {
+            font-size: 20px;
+            color: #FFD793;
+        }
+
+        .title
+        {
+            font-size: 25px;
+            margin-top: 25px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            text-align: center;
+            text-shadow:  1px 1px 1px #000001;
+            color: #fefefe;
+        }
+
+        .field 
+        {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        label 
+        {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .required 
+        {
+            color: #ff2523;
+        }
+
+        .helper 
+        {
+            font-size: 11px;
+            color: #CECECE;
+            
+            margin-top: -2px;
+            line-height: 1.4;
+        }
+
+        .uid-frame
+        {
+            background: #F9AA59;
+            font-family: 'Consolas';
+            width: 20%;
+            height: 38px;
+            margin-top: 5px;
+            border: 1px solid #3d2815;
+            border-radius: 10px;
+            color: #000001;
+            font-size: 15px;
+            text-align: center;
+            align-content: center;
+            font-weight: bolder;
+        }
+
+        input, textarea, select 
+        {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #3d2815;
+            border-radius: 10px;
+            background: #FFEFDF;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        input:focus, textarea:focus, select:focus 
+        {
+            outline: none;
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+        }
+
+        textarea 
+        {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .invalid 
+        {
+            border-color: #ff2523 !important;
+            box-shadow: 0 0 0 5px rgba(255, 44, 44, 0.315);
+        }
+
+        .used 
+        {
+            border-color: #55ff55;
+        }
+
+        button 
+        {
+            margin-top: 10px;
+            background: #ff7733;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover 
+        {
+            background: #7a5b3f;
+        }
+
+        button:disabled 
+        {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .loading 
+        {
+            display: none;
+            text-align: center;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .success 
+        {
+            display: none;
+            background: #dcfce7;
+            color: #166534;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+
+        .error 
+        {
+            display: none;
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+
+        <div class="header">
+
+            <img src="https://drive.google.com/thumbnail?id=1OdblX03EtwBizB07s7bdcytNyJU2i7mp" class="header-logo">
+
+            <div>
+                <div class="header-title">BeeVolt JR</div>
+                <div class="header-subtitle">NectarTrack 🌼 CRM</div>
+            </div>
+        </div>
+
+        <div id="title" class="title"><label></label></div>
+
+        <!-- DIV PARA DEBUG -->
+        <!-- <div id="output"><h1>A</h1></div> -->
+
+        <div id="uid" class="field">
+
+            <label>Lead UID</label>
+
+            <div id="uid-field" class="uid-frame">LEAD-0000</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Nome da Empresa <span class="required">*</span></label>
+
+            <input id="name">
+
+            <div class="helper">Nome oficial da empresa.</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Email <span class="required">*</span></label>
+
+            <input id="email" type="email">
+
+            <div class="helper">Email corporativo da empresa.</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Telefone <span class="required">*</span></label>
+
+            <input id="phone" maxlength="15">
+
+            <div class="helper">WhatsApp ou telefone comercial.</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Site</label>
+
+            <input id="website" placeholder="https://empresa.com.br">
+
+            <div class="helper">Site oficial da empresa.</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Campo de atuação <span class="required">*</span></label>
+
+            <textarea id="actfield" placeholder="A Empresa atua em ..."></textarea>
+
+            <div class="helper">Atuação da empresa.</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Insight da empresa <span class="required">*</span></label>
+
+            <textarea id="insight" placeholder="As principais ideias da Empresa são ..."></textarea>
+
+            <div class="helper">Ideias da empresa</div>
+
+        </div>
+
+        <div class="field">
+
+            <label>Serviços prestados <span class="required">*</span></label>
+
+            <textarea id="services" placeholder="A Empresa presta serviços de/em ..."></textarea>
+
+            <div class="helper">Principais serviços oferecidos pela empresa.</div>
+
+        </div>
+
+        <div id="sub-field" class="field">
+
+            <label>Colaborador <span class="required">*</span></label>
+
+            <select id="subscribers">
+                <option value="">Selecione um responsável</option>
+            </select>
+
+            <div class="helper">Responsável por monitorar empresa.</div>
+
+        </div>
+
+        <button id="submitButton" onclick="submitForm()">Adicionar Empresa</button>
+
+
+        <!-- ALERTAS -->
+
+        <div class="success" id="success">A Empresa foi adicionada com sucesso.</div>
+        <div class="error" id="error"></div>
+        <div class="loading" id="loading">Enviando informações...</div>
+
+    </div>
+
+    <script>
+
+        const mode = 'edit'
+        //const mode = "<?= mode ?>";
+        //const colabors = <?= JSON.stringify(colabors) ?>;
+        //const company = JSON.parse(<?= JSON.stringify(company) ?>);
+
+        window.onload = () =>
+        {
+            if(mode == 'add')
+            {
+                document.getElementById("uid").style.display        = "none";
+                document.getElementById("sub-field").style.display  = "flex";
+                document.getElementById("title").innerText          = "Adicionar Empresa";
+                document.getElementById("submitButton").innerText   = "Adicionar Empresa";
+
+                SetColabors(JSON.parse(colabors));
+            }
+
+            else if(mode == 'edit')
+            {
+                document.getElementById("uid").style.display        = "block";
+                document.getElementById("sub-field").style.display  = "none";
+                document.getElementById("title").innerText          = "Editar Empresa";
+                document.getElementById("submitButton").innerText   = "Salvar Empresa";
+            
+                fillForm(company);
+
+                document.getElementById("name").addEventListener("input", ToggleElementUsed);
+                document.getElementById("email").addEventListener("input", ToggleElementUsed);
+                document.getElementById("phone").addEventListener("input", ToggleElementUsed);
+                document.getElementById("website").addEventListener("input", ToggleElementUsed);
+                document.getElementById("actfield").addEventListener("input", ToggleElementUsed);
+                document.getElementById("insight").addEventListener("input", ToggleElementUsed);
+                document.getElementById("services").addEventListener("input", ToggleElementUsed);
+            }
+        };
+        
+        document.getElementById("phone").addEventListener("input", FixPhone);
+
+        function isNumber(n) { return !isNaN(parseFloat(n)) && isFinite(n) && n !== ''; }
+
+        function FixPhone(element) 
+        {
+            let value = element.target.value;
+            
+            value = value.replace(/[^0-9 ]/g, '').slice(0, 15);
+
+            element.target.value = value.trim();
+        }
+
+        function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+        function clearInvalid() 
+        {    
+            document.querySelectorAll("input, textarea, select").forEach((field) => 
+            {
+                field.classList.remove("invalid");
+            });
+        }
+
+        function invalidate(id) 
+        {
+            document.getElementById(id).classList.add("invalid");
+        }
+
+        function ToggleElementUsed(element)
+        {
+            element.target.classList.add("used")
+        }
+
+        function ToggleElementsUnused()
+        {
+            document.querySelectorAll("input, textarea").forEach((field) => 
+            {
+                field.classList.remove("used");
+            });
+        }
+
+        function showError(message) 
+        {
+            const error = document.getElementById("error");
+
+            error.innerText = message;
+            error.style.display = "block";
+        }
+
+        function hideMessages() 
+        {
+            document.getElementById("error").style.display   = "none";
+            document.getElementById("success").style.display = "none";
+        }
+
+        function submitForm() 
+        {
+            clearInvalid();
+            hideMessages();
+
+            const button = document.getElementById("submitButton");
+
+            let data = {};
+
+            const select = document.getElementById("subscribers");
+
+            if(mode == 'add')
+            {
+                data =
+                {
+                  name:           document.getElementById("name").value.trim() || "N/A",
+                  email:          document.getElementById("email").value.trim() || "N/A",
+                  phone:          document.getElementById("phone").value.trim() || "N/A",
+                  website:        document.getElementById("website").value.trim() || "N/A",
+                  actfield:       document.getElementById("actfield").value.trim() || "N/A",
+                  insight:        document.getElementById("insight").value.trim() || "N/A",
+                  service:        document.getElementById("services").value.trim() || "N/A",
+                  subscribers:    select.options[select.selectedIndex].text.trim() || "N/A"
+                };
+            }
+
+            else if(mode == 'edit')
+            {
+                document.querySelectorAll(".used").forEach(field =>
+                {
+                    data[field.id] = field.value.trim();
+                });
+            }
+
+            if(Object.keys(data).length === 0)
+            {
+                invalidate("name");
+                invalidate("email");
+                invalidate("phone");
+                invalidate("actfield");
+                invalidate("insight");
+                invalidate("services");
+                invalidate("subscribers");
+                
+                if(mode == 'add')
+                  showError("Preencha todo o formulário antes de enviar!");
+                else if(mode == 'edit')
+                  showError("Você não alterou nenhum campo!");
+
+                return;
+            }
+
+            if(!data.email && !data.phone) 
+            {
+                invalidate("email");
+                invalidate("phone");
+                showError("Informe, ao menos, um meio de contato: Email ou Telefone.");
+                return;
+            }
+
+            if(data.email) 
+            {
+                if(!isValidEmail(data.email)) 
+                {
+                    invalidate("email");
+                    showError("Email inválido.");
+                    return;
+                }
+
+                if(!data.name || !data.actfield || !data.insight || !data.service) 
+                {
+                    invalidate("name");
+                    invalidate("actfield");
+                    invalidate("insight");
+                    invalidate("services");
+                    showError("Preencha os campos obrigatórios (*) necessários para campanhas de email.");
+                    return;
+                }
+            }
+
+            if(data.subscribers === "" && mode == 'add') 
+            {
+                invalidate("subscribers");
+                showError("Selecione um colaborador.");
+                return;
+            }
+
+            button.disabled = true;
+
+            button.innerText = "Enviando dados...";
+
+            document.getElementById("loading").style.display = "block";
+
+            if(mode == 'add')
+            {
+                google.script.run.withSuccessHandler((response) => 
+                {
+                    button.disabled = false;
+
+                    button.innerText = "Adicionar Empresa";
+
+                    document.getElementById("loading").style.display = "none";
+
+                    if(response.success) 
+                    {
+                        document.getElementById("success").style.display = "block";
+        
+                        document.querySelectorAll("input, textarea").forEach((field) => 
+                        {
+                            field.value = "";
+                        });
+
+                        document.getElementById("subscribers").value = "";
+                        
+                        google.script.run.withSuccessHandler(() =>
+                        {
+                          
+                        })
+                        .withFailureHandler(err =>
+                        {
+                          console.error(err);
+                          showError("Erro ao atualizar planilha.");
+                        })
+                        .Load();
+                    }
+                    
+                    else 
+                    {
+                        showError(response.message);
+                    }
+                })
+                .withFailureHandler((err) => 
+                {
+                    button.disabled = false;
+
+                    button.innerText = "Adicionar Empresa";
+
+                    document.getElementById("loading").style.display = "none";
+
+                    showError("Erro interno! Avise pessoal de P&D.");
+                
+                    console.error(err);
+                })
+                .AddCompany(data);
+            }
+
+            else if(mode == 'edit')
+            {
+                google.script.run.withSuccessHandler((response) => 
+                {
+                    document.getElementById("loading").style.display = "none";
+
+                    if(response.success) 
+                    {
+                        document.getElementById("success").style.display = "block";
+
+                        google.script.run.withSuccessHandler(() =>
+                        {
+                          setTimeout(() =>
+                          {
+                              google.script.host.close();
+                          }, 1000);
+                        })
+                        .withFailureHandler(err =>
+                        {
+                          console.error(err);
+                          showError("Erro ao atualizar planilha.");
+                        })
+                        .Load();
+                    }
+                        
+                    else 
+                    {
+                      showError(response.message);
+                    }
+                })
+                .withFailureHandler((err) => 
+                {
+                    document.getElementById("loading").style.display = "none";
+
+                    showError("Erro interno! Avise pessoal de P&D.");
+                
+                    console.error(err);
+                })
+                .EditCompany(company.uid, data);              
+            }
+        }
+
+        function fillForm(company) 
+        {
+            document.getElementById("uid-field").innerText  = "LEAD-" + `${Number(company.uid)}`.padStart(4, '0');
+            document.getElementById("name").value     = company.name;
+            document.getElementById("email").value    = company.email;
+            document.getElementById("phone").value    = company.phone;
+            document.getElementById("website").value  = company.website;
+            document.getElementById("actfield").value = company.actfield;
+            document.getElementById("insight").value  = company.insight;
+            document.getElementById("services").value = company.services;
+        }
+
+        function SetColabors(colabors)
+        {
+            const select = document.getElementById("subscribers");
+
+            select.innerHTML = '<option value=\"\">Selecione um responsável</option>';
+            
+            colabors.forEach(person =>
+            {
+                let idx = 1;
+                const option = document.createElement("option");
+
+                option.value = idx++;
+                option.textContent = person.subscribers;
+                
+                select.appendChild(option);
+            });
+        }
+
+    </script>
+</body>
+</html>

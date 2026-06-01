@@ -125,6 +125,78 @@ app.post("/addcompy", (req, res) =>
   }
 });
 
+app.post("/updatecompany/:id", (req, res) =>
+{
+    const id = req.params.id;
+    const data = req.body;
+
+    if (Object.keys(data).length === 0)
+    {
+        return res.json({
+            success: false,
+            message: "Nenhum campo enviado."
+        });
+    }
+
+    const fields = Object.keys(data);
+
+    const setClause =
+        fields.map(field => `${field} = ?`).join(", ");
+
+    const values =
+        [...fields.map(field => data[field]), id];
+
+    db.run(
+        `
+        UPDATE companys
+        SET ${setClause}
+        WHERE uid = ?
+        `,
+        values,
+        function(err)
+        {
+            if (err)
+            {
+                console.error(err);
+
+                return res.json({
+                    success: false,
+                    message: "Erro ao atualizar."
+                });
+            }
+
+            return res.json({
+                success: true,
+                changes: this.changes
+            });
+        }
+    );
+});
+
+app.get("/subscribers", (req, res) =>
+{
+    db.all(
+        `
+        SELECT DISTINCT subscribers
+        FROM companys
+        WHERE subscribers IS NOT NULL
+          AND subscribers <> ''
+          AND subscribers <> 'N/A'
+        ORDER BY subscribers
+        `,
+        [],
+        (err, rows) =>
+        {
+            if (err)
+            {
+                return res.status(500).json(err);
+            }
+
+            res.json(rows);
+        }
+    );
+});
+
 app.listen(3000, () => {
     console.log("Servidor rodando");
 });
