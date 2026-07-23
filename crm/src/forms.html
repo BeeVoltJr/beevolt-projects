@@ -293,7 +293,7 @@
 
             <label>Serviços prestados <span class="required">*</span></label>
 
-            <textarea id="services" placeholder="A Empresa presta serviços de/em ..."></textarea>
+            <textarea id="service" placeholder="A Empresa presta serviços de/em ..."></textarea>
 
             <div class="helper">Principais serviços oferecidos pela empresa.</div>
 
@@ -316,18 +316,18 @@
 
         <!-- ALERTAS -->
 
-        <div class="success" id="success">A Empresa foi adicionada com sucesso.</div>
+        <div class="success" id="success">Sucesso!</div>
         <div class="error" id="error"></div>
-        <div class="loading" id="loading">Enviando informações...</div>
+        <div class="loading" id="loading">Enviando informações, aguarde...</div>
 
     </div>
 
     <script>
-
-        const mode = 'edit'
-        //const mode = "<?= mode ?>";
-        //const colabors = <?= JSON.stringify(colabors) ?>;
-        //const company = JSON.parse(<?= JSON.stringify(company) ?>);
+        
+        const mode = "<?= mode ?>";
+        const user = "<?= user ?>";
+        const colabors = <?= JSON.stringify(colabors) ?>;
+        const company = JSON.parse(<?= JSON.stringify(company) ?>);
 
         window.onload = () =>
         {
@@ -337,8 +337,14 @@
                 document.getElementById("sub-field").style.display  = "flex";
                 document.getElementById("title").innerText          = "Adicionar Empresa";
                 document.getElementById("submitButton").innerText   = "Adicionar Empresa";
-
-                SetColabors(JSON.parse(colabors));
+                
+                if(user == 'none')
+                    SetColabors(JSON.parse(colabors));
+                else
+                {
+                    const select = document.getElementById("subscribers");
+                    select.innerHTML = `<option value="1">${user}</option>`;
+                }
             }
 
             else if(mode == 'edit')
@@ -356,7 +362,7 @@
                 document.getElementById("website").addEventListener("input", ToggleElementUsed);
                 document.getElementById("actfield").addEventListener("input", ToggleElementUsed);
                 document.getElementById("insight").addEventListener("input", ToggleElementUsed);
-                document.getElementById("services").addEventListener("input", ToggleElementUsed);
+                document.getElementById("service").addEventListener("input", ToggleElementUsed);
             }
         };
         
@@ -415,204 +421,23 @@
             document.getElementById("success").style.display = "none";
         }
 
-        function submitForm() 
+        function getSubscriber(select)
         {
-            clearInvalid();
-            hideMessages();
+            const sub = select.options[select.selectedIndex].text.trim()
 
-            const button = document.getElementById("submitButton");
-
-            let data = {};
-
-            const select = document.getElementById("subscribers");
-
-            if(mode == 'add')
-            {
-                data =
-                {
-                  name:           document.getElementById("name").value.trim() || "N/A",
-                  email:          document.getElementById("email").value.trim() || "N/A",
-                  phone:          document.getElementById("phone").value.trim() || "N/A",
-                  website:        document.getElementById("website").value.trim() || "N/A",
-                  actfield:       document.getElementById("actfield").value.trim() || "N/A",
-                  insight:        document.getElementById("insight").value.trim() || "N/A",
-                  service:        document.getElementById("services").value.trim() || "N/A",
-                  subscribers:    select.options[select.selectedIndex].text.trim() || "N/A"
-                };
-            }
-
-            else if(mode == 'edit')
-            {
-                document.querySelectorAll(".used").forEach(field =>
-                {
-                    data[field.id] = field.value.trim();
-                });
-            }
-
-            if(Object.keys(data).length === 0)
-            {
-                invalidate("name");
-                invalidate("email");
-                invalidate("phone");
-                invalidate("actfield");
-                invalidate("insight");
-                invalidate("services");
-                invalidate("subscribers");
-                
-                if(mode == 'add')
-                  showError("Preencha todo o formulário antes de enviar!");
-                else if(mode == 'edit')
-                  showError("Você não alterou nenhum campo!");
-
-                return;
-            }
-
-            if(!data.email && !data.phone) 
-            {
-                invalidate("email");
-                invalidate("phone");
-                showError("Informe, ao menos, um meio de contato: Email ou Telefone.");
-                return;
-            }
-
-            if(data.email) 
-            {
-                if(!isValidEmail(data.email)) 
-                {
-                    invalidate("email");
-                    showError("Email inválido.");
-                    return;
-                }
-
-                if(!data.name || !data.actfield || !data.insight || !data.service) 
-                {
-                    invalidate("name");
-                    invalidate("actfield");
-                    invalidate("insight");
-                    invalidate("services");
-                    showError("Preencha os campos obrigatórios (*) necessários para campanhas de email.");
-                    return;
-                }
-            }
-
-            if(data.subscribers === "" && mode == 'add') 
-            {
-                invalidate("subscribers");
-                showError("Selecione um colaborador.");
-                return;
-            }
-
-            button.disabled = true;
-
-            button.innerText = "Enviando dados...";
-
-            document.getElementById("loading").style.display = "block";
-
-            if(mode == 'add')
-            {
-                google.script.run.withSuccessHandler((response) => 
-                {
-                    button.disabled = false;
-
-                    button.innerText = "Adicionar Empresa";
-
-                    document.getElementById("loading").style.display = "none";
-
-                    if(response.success) 
-                    {
-                        document.getElementById("success").style.display = "block";
-        
-                        document.querySelectorAll("input, textarea").forEach((field) => 
-                        {
-                            field.value = "";
-                        });
-
-                        document.getElementById("subscribers").value = "";
-                        
-                        google.script.run.withSuccessHandler(() =>
-                        {
-                          
-                        })
-                        .withFailureHandler(err =>
-                        {
-                          console.error(err);
-                          showError("Erro ao atualizar planilha.");
-                        })
-                        .Load();
-                    }
-                    
-                    else 
-                    {
-                        showError(response.message);
-                    }
-                })
-                .withFailureHandler((err) => 
-                {
-                    button.disabled = false;
-
-                    button.innerText = "Adicionar Empresa";
-
-                    document.getElementById("loading").style.display = "none";
-
-                    showError("Erro interno! Avise pessoal de P&D.");
-                
-                    console.error(err);
-                })
-                .AddCompany(data);
-            }
-
-            else if(mode == 'edit')
-            {
-                google.script.run.withSuccessHandler((response) => 
-                {
-                    document.getElementById("loading").style.display = "none";
-
-                    if(response.success) 
-                    {
-                        document.getElementById("success").style.display = "block";
-
-                        google.script.run.withSuccessHandler(() =>
-                        {
-                          setTimeout(() =>
-                          {
-                              google.script.host.close();
-                          }, 1000);
-                        })
-                        .withFailureHandler(err =>
-                        {
-                          console.error(err);
-                          showError("Erro ao atualizar planilha.");
-                        })
-                        .Load();
-                    }
-                        
-                    else 
-                    {
-                      showError(response.message);
-                    }
-                })
-                .withFailureHandler((err) => 
-                {
-                    document.getElementById("loading").style.display = "none";
-
-                    showError("Erro interno! Avise pessoal de P&D.");
-                
-                    console.error(err);
-                })
-                .EditCompany(company.uid, data);              
-            }
+            return (sub === 'Selecione um responsável') ? '' : sub
         }
 
         function fillForm(company) 
         {
-            document.getElementById("uid-field").innerText  = "LEAD-" + `${Number(company.uid)}`.padStart(4, '0');
+            document.getElementById("uid-field").innerText  = "LEADUID-" + `${Number(company.uid)}`.padStart(4, '0');
             document.getElementById("name").value     = company.name;
             document.getElementById("email").value    = company.email;
             document.getElementById("phone").value    = company.phone;
             document.getElementById("website").value  = company.website;
             document.getElementById("actfield").value = company.actfield;
             document.getElementById("insight").value  = company.insight;
-            document.getElementById("services").value = company.services;
+            document.getElementById("service").value = company.service;
         }
 
         function SetColabors(colabors)
@@ -623,16 +448,238 @@
             
             colabors.forEach(person =>
             {
-                let idx = 1;
                 const option = document.createElement("option");
 
-                option.value = idx++;
+                option.value = person.id;
                 option.textContent = person.subscribers;
                 
                 select.appendChild(option);
             });
         }
 
+        function submitForm() 
+        {
+            clearInvalid();
+            hideMessages();
+    
+            let data = {};
+
+            const button = document.getElementById("submitButton");
+
+            switch(mode)
+            {
+                case 'add':
+                
+                    data =
+                    {
+                        name:           document.getElementById("name").value.trim()            || "N/A",
+                        email:          document.getElementById("email").value.trim()           || "N/A",
+                        phone:          document.getElementById("phone").value.trim()           || "N/A",
+                        website:        document.getElementById("website").value.trim()         || "N/A",
+                        actfield:       document.getElementById("actfield").value.trim()        || "N/A",
+                        insight:        document.getElementById("insight").value.trim()         || "N/A",
+                        service:        document.getElementById("service").value.trim()        || "N/A",
+                        subscribers:    getSubscriber(document.getElementById("subscribers"))   || "N/A"
+                    };
+                    
+                    let valid = true;
+
+                    for(const element in data)
+                    {
+                        if(element == "website") continue;
+
+                        if(data[element] === 'N/A')
+                        {
+                            invalidate(element);
+                            valid = false;
+                        }
+                    }
+                
+                    if(!valid)
+                    {
+                        showError("Há campos não preenchidos");
+                        return;
+                    }
+
+                    if(!isValidEmail(data.email)) 
+                    {
+                        invalidate("email");
+                        showError(`O email '${data.email}' não é válido!`);
+                        return;
+                    }
+                    
+                    button.innerText = "Criando nova empresa ...";
+
+                break;
+
+                case 'edit':
+                
+                    document.querySelectorAll(".used").forEach(field =>
+                    {
+                        data[field.id] = field.value.trim() || "N/A";
+                    });
+
+                    if("name" in data && data.name == 'N/A')
+                    {
+                        invalidate("name");
+                        showError("Informe um nome para empresa.");
+                        return;
+                    }
+
+                    if("email" in data && !isValidEmail(data.email))
+                    {
+                        invalidate("email");
+                        showError(`O email '${data.email}' não é válido!`);
+                        return;
+                    }
+
+                    if("phone" in data && data.phone == 'N/A')
+                    {
+                        invalidate("phone");
+                        showError(`Informe um telefone de contato da empresa!`);
+                        return;
+                    }
+
+                    if("actfield" in data && data.actfield == 'N/A')
+                    {
+                        invalidate("actfield");
+                        showError(`Informe o campo de atuação da empresa!`);
+                        return;
+                    }
+                    
+                    if("insight" in data && data.insight == 'N/A')
+                    {
+                        invalidate("insight");
+                        showError(`Informe as principais ideias da empresa!`);
+                        return;
+                    }
+
+                    if("service" in data && data.service == 'N/A')
+                    {
+                        invalidate("service");
+                        showError(`Informe os serviços oferecidos pela empresa!`);
+                        return;
+                    }
+
+                    button.innerText = "Atualizando dados...";
+
+                break;
+
+            }
+
+            button.disabled = true;
+
+            document.getElementById("loading").style.display = "block";
+            
+            ToggleElementsUnused();
+          
+            switch(mode)
+            {
+                case 'add':
+
+                    google.script.run.withSuccessHandler((response) => 
+                    {
+                        button.disabled = false;
+                        button.innerText = "Adicionar Empresa";
+                        document.getElementById("loading").style.display = "none";
+
+                        if(response.success) 
+                        {
+                            document.getElementById("success").style.display = "block";
+            
+                            document.querySelectorAll("input, textarea").forEach((field) => 
+                            {
+                                field.value = "";
+                            });
+
+                            document.getElementById("subscribers").value = "";
+                            
+                            google.script.run.withSuccessHandler(() =>
+                            {
+                            
+                            })
+                            .withFailureHandler(err =>
+                            {
+                                console.error(err);
+                                showError("Houve um erro ao atualizar a planilha. Avise o setor de P&D.<br><br>Fechando Formulário ...");
+                                
+                                setTimeout(() =>
+                                {
+                                    google.script.host.close();
+                                }, 5000);
+                            })
+                            .BeeCore("Load", user);  
+                        }
+                        
+                        else 
+                        {
+                            showError(response.message);
+                        }
+                    })
+                    .withFailureHandler((err) => 
+                    {
+                        console.error(err);
+                        showError("Houve um erro interno! Avise o setor de P&D.<br><br>Fechando Formulário ...");
+                                
+                        setTimeout(() =>
+                        {
+                            google.script.host.close();
+                        }, 5000);
+                    })
+                    .BeeCore("AddCompany", data);
+                break;
+                
+                case 'edit':
+                    google.script.run.withSuccessHandler((response) => 
+                    {
+                        document.getElementById("loading").style.display = "none";
+
+                        if(response.success) 
+                        {
+                            document.getElementById("success").style.display = "block";
+
+                            google.script.run.withSuccessHandler(() =>
+                            {
+                                setTimeout(() =>
+                                {
+                                    google.script.host.close();
+                                }, 1000);
+                            })
+                            .withFailureHandler(err =>
+                            {
+                                console.error(err);
+                                showError("Houve um erro ao atualizar a planilha. Avise o setor de P&D.<br><br>Fechando Formulário ...");
+                                
+                                setTimeout(() =>
+                                {
+                                    google.script.host.close();
+                                }, 5000);
+                            })
+                            .BeeCore("Load", user);  
+                        }
+                            
+                        else 
+                        {
+                            showError(response.message);
+                        }
+                    })
+                    .withFailureHandler((err) => 
+                    {
+                        document.getElementById("loading").style.display = "none";
+                        
+                        console.error(err);
+                        showError("Houve um erro interno! Avise o setor de P&D.<br><br>Fechando Formulário ...");
+                                
+                        setTimeout(() =>
+                        {
+                            google.script.host.close();
+                        }, 5000);
+                    })
+                    .BeeCore("EditCompany", company.uid, data);              
+                break;
+            }
+        }
+    
     </script>
 </body>
 </html>

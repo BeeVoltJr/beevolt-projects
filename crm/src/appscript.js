@@ -1,44 +1,37 @@
-const { use } = require("react")
-
 const COLOR_1 =                     "#FFAA59"
 const COLOR_2 =                     "#FFE3A5"
 const COLOR_3 =                     "#FFD793"
 const REMOVE_FILE_STRING =          "crm-sheet-"
 const MAX_BOUNDS_COLUMS_COLORED =   20
 
-let sheet_type = "none";
-let user_name  = "none"
-
 function onOpen() 
 {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
-
-    sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
+    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
     
     if(sheet_type == "user")
     {
-        user_name = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
         SpreadsheetApp.getUi().createMenu("BeeVolt")
-        .addItem("Atualizar Dados", "LoadUser")
-        .addItem("Nova Empresa", "Add")
-        .addItem("Editar Empresa", "Edit")
+        .addItem("Atualizar Dados", "beecore.LoadUser")
+        .addItem("Nova Empresa", "beecore.Add")
+        .addItem("Editar Empresa", "beecore.Edit")
         .addToUi();
     }
 
     else if(sheet_type == "main")
     {
-        user_name = "Usuário";
         SpreadsheetApp.getUi().createMenu("BeeVolt")
-        .addItem("Atualizar Dados", "Load")
+        .addItem("Atualizar Dados", "LoadDB")
         .addItem("Nova Empresa", "Add")
         .addItem("Editar Empresa", "Edit")
         .addToUi();
     }
 
-    ColourSheet(sheet, 5);
+    ColourSheet(sheet, 5, 20);
 }
 
-function ColourSheet(sheet, height) 
+function ColourSheet(sheet, height, width) 
 {
     for(let i = 1; i <= height + MAX_BOUNDS_COLUMS_COLORED; i++) 
     {
@@ -53,98 +46,115 @@ function ClearSheet(sheet)
 {
     sheet.clear();
     sheet.setRowHeights(1, sheet.getMaxRows(), 21);
-
-    ColourSheet(sheet, 0); 
 }
 
-function Load() 
+function Load(user) 
 {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-
     ClearSheet(sheet);
 
-    const response = UrlFetchApp.fetch(
-    `https://patrol-clubbing-alienate.ngrok-free.dev/dbget`,
-    {
-        headers:
-        {
-            "ngrok-skip-browser-warning": "true"
-        }
-    });
+    let companies = {};
 
-    if(response.getResponseCode() >= 400)
+    switch(user)
     {
-        SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
-        return;
-    }
+        case 'none':
 
-    const companies = JSON.parse(response.getContentText());
+            const response = UrlFetchApp.fetch(
+            `https://patrol-clubbing-alienate.ngrok-free.dev/dbget`,
+            {
+                headers:
+                {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
 
-    if(companies.length === 0) 
-    {
-        SpreadsheetApp.getUi().alert(`Não há empresas cadastradas no banco de dados. Avise um membro do setor de P&D imediantamente!`);
-        return;
+            if(response.getResponseCode() >= 400)
+            {
+                SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
+                return;
+            }
+
+            companies = JSON.parse(response.getContentText());
+
+            if(companies.length === 0) 
+            {
+                SpreadsheetApp.getUi().alert(`Não há empresas cadastradas no banco de dados. Avise um membro do setor de P&D imediantamente!`);
+                return;
+            }
+            
+        break;
+        
+        default:
+  
+            const response = UrlFetchApp.fetch(
+            `https://patrol-clubbing-alienate.ngrok-free.dev/companys/${user}}`,
+            {
+                headers:
+                {
+                    "ngrok-skip-browser-warning": "true"
+                }
+            });
+
+            if(response.getResponseCode() >= 400)
+            {
+                SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
+                return;
+            }
+
+            companies = JSON.parse(response.getContentText());
+
+            if (companies.length === 0) 
+            {
+                SpreadsheetApp.getUi().alert(`${user} não possui empresas cadastradas. Adicione uma empresa primeiro!`);
+                return;
+            }
+
+        break;
     }
 
     BuildMainSheet(sheet, companies);
 }
 
+function LoadDB() { Load("none"); }
+
 function LoadUser() 
 {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
+    username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
 
-    let subscriber = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
-
-    ClearSheet(sheet);
-
-    const response = UrlFetchApp.fetch(
-    `https://patrol-clubbing-alienate.ngrok-free.dev/companys/${subscriber}`,
-    {
-        headers:
-        {
-            "ngrok-skip-browser-warning": "true"
-        }
-    });
-
-    if(response.getResponseCode() >= 400)
-    {
-        SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
-        return;
-    }
-
-    const companies = JSON.parse(response.getContentText());
-
-    if (companies.length === 0) 
-    {
-        SpreadsheetApp.getUi().alert(`${user_name}, não há empresas cadastradas no seu nome. Adicione uma empresa primeiro!`);
-        return;
-    }
-
-    BuildMainSheet(sheet, companies)
+    Load(username);
 }
 
 function Add() 
 {
+    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
+    const username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
+    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
+
     const template      = HtmlService.createTemplateFromFile("forms");
 
     template.mode       = "add";
-    template.user       = (sheet_type === 'user') ? user_name : null;
+    template.user       = (sheet_type === 'user') ? username : 'none';
     template.colabors   = GetColaborList();
     template.company    = null;
 
     const html = template.evaluate().setWidth(1024).setHeight(720);
 
-    const title = (sheet_type === 'user') ? `Formulário de ${user_name} | Adicionar Empresa` : "Adicionar Empresa";
+    const title = (sheet_type === 'user') ? `${username} | Adicionar Empresa` : "Adicionar Empresa";
 
     SpreadsheetApp.getUi().showModalDialog(html, title);
 }
 
 function Edit() 
 {
+    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
+    const username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
+    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
+
     const template      = HtmlService.createTemplateFromFile("forms");
 
     template.mode       = "edit";
-    template.user       = (sheet_type === 'user') ? user_name : null;
+    template.user       = (sheet_type === 'user') ? username : 'none';
     template.colabors   = null;
     template.company    = GetSelectedCompany();
 
@@ -156,8 +166,7 @@ function Edit()
 
     const html = template.evaluate().setWidth(1024).setHeight(720);
 
-
-    const title = (sheet_type === 'user') ? `Formulário de ${user_name} | Editar Empresa` : "Editar Empresa";
+    const title = (sheet_type === 'user') ? `${username} | Editar Empresa` : "Editar Empresa";
 
     SpreadsheetApp.getUi().showModalDialog(html, title);
 }
@@ -193,14 +202,14 @@ function GetSelectedCompany()
     const data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
 
     return {
-        uid: row - 1,
-        name: data[0],
-        email: data[1],
-        phone: data[2],
-        website: data[3],
-        actfield: data[4],
-        insight: data[5],
-        services: data[6]
+        uid: data[0],
+        name: data[1],
+        email: data[2],
+        phone: data[3],
+        website: data[4],
+        actfield: data[5],
+        insight: data[6],
+        service: data[7]
     };
 }
 
@@ -230,7 +239,7 @@ function AddCompany(data)
     {
         return {
             success: false,
-            message: "Houve um erro ao tentar se conectar ao servidor. Avise um membro do setor de P&D imediantamente!"
+            message: "Houve um erro ao tentar se conectar ao servidor. Avise o setor de P&D imediantamente!"
         };
     }
 }
@@ -261,7 +270,7 @@ function EditCompany(uid, data)
     {
         return {
             success: false,
-            message: "Houve um erro ao tentar se conectar ao servidor. Avise um membro do setor de P&D imediantamente!"
+            message: "Houve um erro ao tentar se conectar ao servidor. Avise o setor de P&D imediantamente!"
         };
     }
 }
@@ -322,5 +331,5 @@ function BuildMainSheet(sheet, companies)
         sheet.setColumnWidth(colIndex + 1, width_aprox);
     });
 
-    ColourSheet(sheet, height);
+    ColourSheet(sheet, height, 20);
 }
