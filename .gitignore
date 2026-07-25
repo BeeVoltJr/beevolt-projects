@@ -1,5 +1,9 @@
 .env
 node_modules/
-database/
+**/node_modules/
+/database/*.db
+/database/*.db-journal
+/database/*.db-wal
+/database/backups/
 .venv/
 *.db

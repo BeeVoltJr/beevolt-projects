@@ -4,8 +4,12 @@ import cors                 from 'cors';
 import fs                   from 'fs';
 import path                 from 'path';
 import dotenv               from 'dotenv';
-import puppeteer            from 'puppeteer';
 import { fileURLToPath }    from 'url';
+
+import 
+{ 
+    SendSystemLog,  
+} from '@beevolt/shared';
 
 import 
 { 
@@ -21,17 +25,15 @@ const sqlite3 = sqlite3Package.verbose();
 
 const commands = {};
 
-const db = new sqlite3.Database("./database/beedb.db");
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config();
 
-const embedlog = JSON.parse(fs.readFileSync(path.join(__dirname, 'embed-log.json'), 'utf-8'));
+const embedlog = JSON.parse(fs.readFileSync(path.join(__dirname, 'config/embed-log.json'), 'utf-8'));
 
 const client = new Client
 (
@@ -127,54 +129,6 @@ CMD("teste", async (message, client, parms0, params1, params2) =>
 {
 
 });
-
-
-async function SendSystemLog(log_sysname, log_type, log_msg)
-{
-    let log_title, log_color;
-
-    switch(log_type)
-    {
-        case "ERROR": 
-        {
-            log_title = "ERRO";
-            log_color = Number("0xFF5555");
-            break;
-        }
-        case "WARN":
-        {
-            log_title = "AVISO";
-            log_color = Number("0xFFFF55");
-            break;
-        }
-
-        case "DEBUG":
-        {
-            log_title = "DEBUG";
-            log_color = Number("0x55FF55");
-            break;
-        }
-    }
-
-    await fetch(
-        "http://localhost:4000/internal/log",
-        {
-            method: "POST",
-            headers:
-            {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-
-                title:      log_title,
-                color:      log_color,
-                sysname:    `\`\`\`${log_sysname}\`\`\``,
-                msg:        `${log_msg}`,
-                date:       `\`\`\`${new Date().toLocaleString()}\`\`\``
-            })
-        }
-    );
-}
 
 // app.use((req, res, next) =>
 // {

@@ -1,0 +1,13 @@
+{
+  "name": "beevolt-projects",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "start": "bash start.sh",
+    "dev:bot": "npm run dev --workspace=discord-bot",
+    "dev:crm": "npm run dev --workspace=crm-sheets"
+  }
+}

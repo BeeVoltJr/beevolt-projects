@@ -1,14 +1,13 @@
-const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
-const cors    = require("cors");
-const app     = express();
+import express  from 'express';
+import cors     from 'cors';
+import { beedb }   from './database.js';
 
-app.use(cors());
-app.use(express.json());
+export const beeapp = express();
 
-const db = new sqlite3.Database("./database/beedb.db");
+beeapp.use(cors());
+beeapp.use(express.json());
 
-app.listen(3000, async (err) => 
+beeapp.listen(3000, async (err) => 
 {
     if(err)
     {
@@ -20,22 +19,22 @@ app.listen(3000, async (err) =>
 
     console.log("Bee Volt CRM iniciado...\n");
 
-    const company_count = await GetCompanyCount();
-    const employee_count = await GetEmployeeCount();
+    const company_count = await beedb.getCount('companies');
+    const employee_count = await beedb.getCount('employees');;
 
     console.log(`Total de empresas: ${company_count}`);
     console.log(`Total de colaboradores: ${employee_count}`);
 
-    SendSystemLog("NECTAR TRACK 🍯🐝", "DEBUG", 
+    // SendSystemLog("NECTAR TRACK 🍯🐝", "DEBUG", 
     
-    `\`\`\`O sistema foi inicializado com sucesso!\n\n` +
-    `• ${company_count} empresas carregadas\n` +
-    `• ${employee_count} calaboradores carregados\`\`\``
+    // `\`\`\`O sistema foi inicializado com sucesso!\n\n` +
+    // `• ${company_count} empresas carregadas\n` +
+    // `• ${employee_count} calaboradores carregados\`\`\``
 
-    );
+    // );
 });
 
-app.use((req, res, next) =>
+beeapp.use((req, res, next) =>
 {
     console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.url}`);
 
@@ -45,39 +44,40 @@ app.use((req, res, next) =>
     next();
 });
 
-app.get("/companies/:subscribers", (req, res) => 
+beeapp.get("/companies/:subscribers", async (req, res) => 
 {
-    const subscribers = req.params.subscribers;
-
-    db.all(
-        "SELECT COALESCE(uid,       'NULL') AS \"leadid\",\
-                COALESCE(name,      'NULL') AS \"Empresa\",\
-                COALESCE(email,     'NULL') AS \"Email\",\
-                COALESCE(phone,     'NULL') AS \"Telefone\",\
-                COALESCE(website,   'NULL') AS \"Site\",\
-                COALESCE(actfield,  'NULL') AS \"AreaEmpresa\",\
-                COALESCE(insight,   'NULL') AS \"InsightEmpresa\",\
-                COALESCE(service,   'NULL') AS \"ServicoPrincipal\"\
-                FROM companies WHERE subscribers = ?",
-
-    [subscribers],
-
-    (err, rows) => 
+    try
     {
-        if(err) 
-        {
-            console.error(`\n[${new Date().toISOString()}] ${err}`);
-            return res.status(500).json(err);
-        }
+        const result = await beedb.getValues
+        (
+            'companies', 
+            
+            "COALESCE(uid,      'NULL') AS \"leadid\",\
+            COALESCE(name,      'NULL') AS \"Empresa\",\
+            COALESCE(email,     'NULL') AS \"Email\",\
+            COALESCE(phone,     'NULL') AS \"Telefone\",\
+            COALESCE(website,   'NULL') AS \"Site\",\
+            COALESCE(actfield,  'NULL') AS \"AreaEmpresa\",\
+            COALESCE(insight,   'NULL') AS \"InsightEmpresa\",\
+            COALESCE(service,   'NULL') AS \"ServicoPrincipal\"",
+            
+            "subscribers = ?", req.params.subscribers
+        );
 
-        res.json(rows);
-    });
+        return res.json(result);
+    }
+
+    catch(err)
+    {
+        console.error(`\n[${new Date().toISOString()}] ${err}`);
+        return res.status(500).json(err);
+    }
 });
 
-app.get("/dbget", (req, res) =>
+beeapp.get("/dbget", (req, res) =>
 {
 
-    db.all(
+    beedb.all(
         "SELECT COALESCE(uid,         'NULL') AS \"leaduid\",\
                 COALESCE(name,        'NULL') AS \"name\",\
                 COALESCE(email,       'NULL') AS \"email\",\
@@ -102,9 +102,9 @@ app.get("/dbget", (req, res) =>
     });
 });
 
-app.get("/employget", (req, res) =>
+beeapp.get("/employget", (req, res) =>
 {
-    db.all(`SELECT DISTINCT name FROM employees ORDER BY name ASC`,
+    beedb.all(`SELECT DISTINCT name FROM employees ORDER BY name ASC`,
     
     (err, rows) =>
     {
@@ -116,13 +116,13 @@ app.get("/employget", (req, res) =>
     });
 });
 
-app.post("/addcomp", (req, res) =>
+beeapp.post("/addcomp", (req, res) =>
 {
     try
     {
         const company = req.body;
     
-        db.run(`INSERT INTO 
+        beedb.run(`INSERT INTO 
             companies(name, email, phone, website, actfield, insight, service, subscribers)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
             
@@ -145,7 +145,7 @@ app.post("/addcomp", (req, res) =>
                 });
             }
 
-            db.get(`SELECT uid, name, subscribers FROM companies WHERE name = '${company.name}'`, (err, row) =>
+            beedb.get(`SELECT uid, name, subscribers FROM companies WHERE name = '${company.name}'`, (err, row) =>
             {
                 if(err)
                 {
@@ -176,7 +176,7 @@ app.post("/addcomp", (req, res) =>
     }
 });
 
-app.post("/updatecomp/:id", (req, res) =>
+beeapp.post("/updatecomp/:id", (req, res) =>
 {
     const uid   = req.params.id;
     const data  = req.body;
@@ -196,7 +196,7 @@ app.post("/updatecomp/:id", (req, res) =>
 
     const values    = [...fields.map(field => data[field])];
    
-    db.run(`UPDATE companies SET ${setClause} WHERE uid = ${uid}`, values,
+    beedb.run(`UPDATE companies SET ${setClause} WHERE uid = ${uid}`, values,
 
     function(err)
     {
@@ -218,7 +218,7 @@ app.post("/updatecomp/:id", (req, res) =>
         });
     });
 
-    db.get(`SELECT name, subscribers FROM companies WHERE uid = ${uid}`, (err, row) =>
+    beedb.get(`SELECT name, subscribers FROM companies WHERE uid = ${uid}`, (err, row) =>
     {
         if(err)
         {
@@ -232,79 +232,4 @@ app.post("/updatecomp/:id", (req, res) =>
     });
 });
 
-function GetCompanyCount()
-{
-    return new Promise((resolve, reject) =>
-    {
-        db.get(
-            "SELECT COUNT(*) AS count FROM companies",
-            (err, row) =>
-            {
-                if(err) reject(err);
-                else resolve(row.count);
-            }
-        );
-    });
-}
 
-function GetEmployeeCount()
-{
-    return new Promise((resolve, reject) =>
-    {
-        db.get(
-            "SELECT COUNT(*) AS count FROM employees",
-            (err, row) =>
-            {
-                if(err) reject(err);
-                else resolve(row.count);
-            }
-        );
-    });
-}
-
-async function SendSystemLog(log_sysname, log_type, log_msg)
-{
-    let log_title, log_color;
-
-    switch(log_type)
-    {
-        case "ERROR": 
-        {
-            log_title = "ERRO";
-            log_color = Number("0xFF5555");
-            break;
-        }
-        case "WARN":
-        {
-            log_title = "AVISO";
-            log_color = Number("0xFFFF55");
-            break;
-        }
-
-        case "DEBUG":
-        {
-            log_title = "DEBUG";
-            log_color = Number("0x55FF55");
-            break;
-        }
-    }
-
-    await fetch(
-        "http://localhost:4000/internal/log",
-        {
-            method: "POST",
-            headers:
-            {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-
-                title:      log_title,
-                color:      log_color,
-                sysname:    `\`\`\`${log_sysname}\`\`\``,
-                msg:        `${log_msg}`,
-                date:       `\`\`\`${new Date().toLocaleString()}\`\`\``
-            })
-        }
-    );
-}
