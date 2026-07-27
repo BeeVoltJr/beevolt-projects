@@ -10,160 +10,225 @@ export class Database
         this.db = Instance;
     }
 
-    _va_format(where, params) 
-    {
-        if(params.length > 0 && /%[sdifjO%]/.test(where)) 
-            return util.format(where, ...params);
+    // WRAPPERS
 
-        return where;
-    }
-
-    //WRAPPER (Análogos aos hooks de funções no pawn)
-
-    async get(query, ...params) 
+    async get(sql, params = []) 
     {
         return new Promise((resolve, reject) => 
         {
-            this.db.get(query, params, (err, row) => 
+            this.db.get(sql, params, (err, row) => 
             {
                 if(err) 
-                {
-                    console.error(`[ DB ERR ] ${query} ->`, err);
-                    return resolve(err);
-                }
-            
+                    return reject({ error: err, query: sql, params });
+                
                 resolve(row || null);
             });
         });
     }
 
-    async all(query, ...params) 
+    async all(sql, params = []) 
     {
         return new Promise((resolve, reject) => 
         {
-            this.db.all(query, params, (err, rows) => 
+            this.db.all(sql, params, (err, rows) => 
             {
                 if(err) 
-                {
-                    console.error(`[ DB ERR ] ${query} ->`, err);
-                    return resolve(err);
-                }
-            
+                    return reject({ error: err, query: sql, params });
+
                 resolve(rows || []);
             });
         });
     }
 
-    async run(query, ...params) 
+    async run(sql, params = []) 
     {
         return new Promise((resolve, reject) => 
         {
-            this.db.run(query, params, function (err) 
+            this.db.run(sql, params, function (err) 
             {
                 if(err) 
-                {
-                    console.error(`[ DB ERR ] ${query} ->`, err);
-                    return resolve(err);
-                }
+                    return reject({ error: err, query: sql, params });
                 
                 resolve({ success: true, changes: this.changes, lastID: this.lastID });
             });
         });
     }
 
-    /* =========================================================================
-    *                  FUNÇÕES UTILITÁRIAS (MESMAS DO MEU ANTIGO PWN)
-    * ========================================================================= */
-
-    // DB::CreateTable
     async createTable(table, definition) 
     {
-        const result = await this.run(`CREATE TABLE IF NOT EXISTS ${table} (${definition});`);
-
-        if(result.success) 
+        try 
+        {
+            await this.run(`CREATE TABLE IF NOT EXISTS ${table} (${definition});`);
             console.log(`[ DB ] Tabela '${table}' criada com sucesso.`);
+            return true;
+        } 
 
-        return result.success;
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Erro ao criar tabela '${table}'\nQUERY: ${err.query}`);
+            return false;
+        }
     }
 
-    // DB::GetCount
     async getCount(table, where = "", ...params) 
     {
-        const query = where ? `SELECT COUNT(*) AS total FROM ${table} WHERE ${where}` : `SELECT COUNT(*) AS total FROM ${table}`;
-        
-        const row = await this.get(query, ...params);
+        try 
+        {
+            const sql = where 
+                ? `SELECT COUNT(*) AS total FROM ${table} WHERE ${where}` 
+                : `SELECT COUNT(*) AS total FROM ${table}`;
+            
+            const row = await this.get(sql, params.flat(Infinity));
 
-        return (row ? row.total : 0);
+            return row ? row.total : 0;
+        } 
+
+        catch(err) 
+        {
+            console.error(`[ ERRO DB ] Falha no método 'getCount' na tabela '${table}':`, err.error);
+            return 0;
+        }
     }
 
-    // DB::Exists
-    async exists(table, where = "", ...params) 
+    async exists(table, where, ...params) 
     {
         const count = await this.getCount(table, where, ...params);
+        return count > 0;
+    }
+
+    async getRows(table, fields = "*", where = "", ...params) 
+    {
+        try 
+        {
+            const sql = where 
+                ? `SELECT ${fields} FROM ${table} WHERE ${where};` 
+                : `SELECT ${fields} FROM ${table};`;
+
+            const rows = await this.all(sql, params.flat(Infinity));
+
+            return {
+                success: true,
+                reason: 'NO_REASON',
+                [table]: rows
+            };
+        } 
+        
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Falha na consulta 'getRows' na tabela '${table}':`, err.error);
+            
+            return {
+                success: false,
+                reason: `Erro na consulta SQL: ${err.error}`,
+                [table]: []
+            };
+        }
+    }
+
+    async getValue(table, field, where = "", ...params) 
+    {
+        try 
+        {
+            const sql = where 
+                ? `SELECT ${field} FROM ${table} WHERE ${where} LIMIT 1;` 
+                : `SELECT ${field} FROM ${table} LIMIT 1;`;
+
+            const row = await this.get(sql, params.flat(Infinity));
+
+            if(!row) 
+                return { success: false, reason: 'Registro não encontrado', [table]: null };
+            
+            return {
+                success: true,
+                reason: 'NO_REASON',
+                [table]: row[field] !== undefined ? row[field] : row
+            };
+        } 
+
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Falha em 'getValue' na tabela '${table}':`, err.error);
+            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), [table]: null };
+        }
+    }
+
+    async insert(table, data) 
+    {
+        try 
+        {
+            const keys = Object.keys(data);
+            const values = Object.values(data);
+
+            //Concatenação de "?, " para consulta sql segura
+            const placeholders = keys.map(() => '?').join(', ');
+
+            const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders});`;
+            const result = await this.run(sql, values);
+
+            return { success: true, reason: 'NO_REASON', lastID: result.lastID };
+        } 
+
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Erro ao inserir na tabela '${table}':`, err.error);
+            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), lastID: -1 };
+        }
+    }
+
+    async update(table, setClause, where = "", ...params) 
+    {
+        try 
+        {
+            if(!where) 
+            {
+                return {
+                    success: false,
+                    reason: `Por segurança, a tabela '${table}' não foi atualizada por falta de cláusula WHERE.`,
+                    changes: 0
+                };
+            }
+
+            const sql = `UPDATE ${table} SET ${setClause} WHERE ${where};`;
     
-        return (count > 0);
+            const result = await this.run(sql, params.flat(Infinity));
+
+            return { success: true, reason: 'NO_REASON', changes: result.changes };
+        } 
+
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Erro ao atualizar dados na tabela '${table}':`, err.error);
+            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), changes: 0 };
+        }
     }
 
-    // DB::Insert
-    async insert(table, fields, valuesArray) 
+    async delete(table, where = "", ...params) 
     {
-        // Cria os placeholders '?, ?, ?' dinamicamente conforme a quantidade de valores
-        const placeholders = valuesArray.map(() => '?').join(', ');
+        try 
+        {
+            if(!where || where.trim().length === 0) 
+            {
+                return {
+                    success: false,
+                    reason: `Por segurança, a tabela '${table}' não foi alterada por falta de cláusula WHERE.`,
+                    changes: 0
+             }  ;
+            }
 
-        const result = await this.run(`INSERT INTO ${table} (${fields}) VALUES (${placeholders});`, ...valuesArray);
+            const sql = `DELETE FROM ${table} WHERE ${where};`;
+
+            const result = await this.run(sql, params.flat(Infinity));
+
+            return { success: true, reason: 'NO_REASON', changes: result.changes };
+
+        } 
         
-        return result.success; // Retorna se houve ou não sucesso no insert
-    }
-
-    // DB::Update
-    async update(table, setClause, whereClause = "", ...params) 
-    {    
-        const query = whereClause ? `UPDATE ${table} SET ${setClause} WHERE ${whereClause};` : `UPDATE ${table} SET ${setClause};`;
-        
-        const result = await this.run(query, ...params);
-        
-        return result.changes; // Retorna a quantidade de linhas afetadas
-    }
-
-    // DB::Delete
-    async delete(table, whereClause, ...params) 
-    {
-        if(!whereClause) return false; // Medida de segurança
-
-        const result = await this.run(`DELETE FROM ${table} WHERE ${whereClause};`, ...params);
-
-        return result.success; // Retorna se houve ou não sucesso no delete
-    }
-
-    // DB::GetDataInt / DB::GetDataFloat / DB::GetDataString (unificados no javascript)
-    async getValue(table, field, whereClause, ...params) 
-    {
-        const query = `SELECT ${field} FROM ${table} WHERE ${whereClause} LIMIT 1;`;
-
-        const row = await this.get(query, ...params);
-    
-        return row ? row[field] : null;
-    }
-
-    // DB::SetDataInt / DB::SetDataFloat / DB::SetDataString (unificados no javascript)
-    async setValue(table, field, value, whereClause, ...params) 
-    {
-        const query = `UPDATE ${table} SET ${field} = ? WHERE ${whereClause};`;
-
-        const result = await this.run(query, value, ...params);
-
-        return result.success;
-    }
-
-    // Nova função que receberá um conjunto de dados json de uma consulta query
-    async getValues(table, field, whereClause, ...params) 
-    {
-        const query = `SELECT ${field} FROM ${table} WHERE ${whereClause};`
-
-        const rows = await this.all(query, ...params);
-
-        return rows;
-    }
+        catch (err) 
+        {
+            console.error(`[ ERRO DB ] Erro ao deletar dados na tabela '${table}':`, err.error);
+            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), changes: 0 };
+        }
+    }   
 }
 
 export const beedb = new Database(database);

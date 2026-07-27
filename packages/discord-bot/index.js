@@ -9,6 +9,7 @@ import { fileURLToPath }    from 'url';
 import 
 { 
     SendSystemLog,  
+    beedb
 } from '@beevolt/shared';
 
 import 
@@ -95,7 +96,7 @@ client.on('messageCreate', async (message) =>
 
     if(!message.content.startsWith(prefix)) return;
 
-    const args = message.content.slice(prefix.length).trim().split(/ +/);
+    const args = message.content.slice(prefix.length).trim().split(" ");
 
     const command = args.shift().toLowerCase();
 
@@ -125,7 +126,7 @@ function CMD(name, callback)
     commands[name] = callback;
 }
 
-CMD("teste", async (message, client, parms0, params1, params2) => 
+CMD("teste", async (message, client) => 
 {
 
 });

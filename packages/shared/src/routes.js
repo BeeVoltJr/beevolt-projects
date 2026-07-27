@@ -1,11 +1,16 @@
 import express  from 'express';
 import cors     from 'cors';
-import { beedb }   from './database.js';
+import 
+{ 
+    beedb,
+
+}   from './database.js';
 
 export const beeapp = express();
 
 beeapp.use(cors());
 beeapp.use(express.json());
+
 
 beeapp.listen(3000, async (err) => 
 {
@@ -13,7 +18,6 @@ beeapp.listen(3000, async (err) =>
     {
         console.error(err);
         SendSystemLog("NECTAR TRACK 🍯🐝", "ERROR", `Houve um erro ao carregar o sistema`);
-
         return;
     }
 
@@ -44,77 +48,104 @@ beeapp.use((req, res, next) =>
     next();
 });
 
-beeapp.get("/companies/:subscribers", async (req, res) => 
+beeapp.get("/api/companies", OnRequestCompanies);
+
+export async function OnRequestCompanies(req, res) 
 {
     try
     {
-        const result = await beedb.getValues
-        (
-            'companies', 
-            
-            "COALESCE(uid,      'NULL') AS \"leadid\",\
-            COALESCE(name,      'NULL') AS \"Empresa\",\
-            COALESCE(email,     'NULL') AS \"Email\",\
-            COALESCE(phone,     'NULL') AS \"Telefone\",\
-            COALESCE(website,   'NULL') AS \"Site\",\
-            COALESCE(actfield,  'NULL') AS \"AreaEmpresa\",\
-            COALESCE(insight,   'NULL') AS \"InsightEmpresa\",\
-            COALESCE(service,   'NULL') AS \"ServicoPrincipal\"",
-            
-            "subscribers = ?", req.params.subscribers
-        );
+        let   start      = parseInt(req.query.start, 10);
+        let   end        = parseInt(req.query.end, 10);
+        const subscriber = req.query.sub || 'none';
 
-        return res.json(result);
+        let payload = [];
+
+        if(subscriber === 'none' && !isNaN(start) && !isNaN(end))
+        {
+            start = start == 0 ? 1 : start;
+            end = end < 0 ? await beedb.getCount('companies') : end;
+
+            payload = await GetCompaniesFromInterval(start, end);
+        }
+
+        else if(subscriber != 'none' && isNaN(start) && isNaN(end))
+        {
+            payload = await GetCompaniesFromSubs(subscriber);
+        }
+
+        else
+        {
+            return res.status(400).json(
+            { 
+                success: false, 
+                error: 'Parâmetros de consulta inválidos. Forneça um intervalo OU um colaborador' 
+            });
+        }
+
+        return res.json({ success: true, count: payload.length,  data: payload });
     }
 
     catch(err)
     {
-        console.error(`\n[${new Date().toISOString()}] ${err}`);
-        return res.status(500).json(err);
-    }
-});
+        console.error('[ ERRO ] Falha ao processar OnRequestCompanies:', err);
 
-beeapp.get("/dbget", (req, res) =>
+        return res.status(500).json(
+        { 
+            success: false, 
+            error: 'Falha ao buscar empresas no banco de dados.' 
+        });
+    } 
+}
+
+beeapp.get("/api/employees", OnRequestEmployees);
+
+export async function OnRequestEmployees(req, res) 
 {
-
-    beedb.all(
-        "SELECT COALESCE(uid,         'NULL') AS \"leaduid\",\
-                COALESCE(name,        'NULL') AS \"name\",\
-                COALESCE(email,       'NULL') AS \"email\",\
-                COALESCE(phone,       'NULL') AS \"phone\",\
-                COALESCE(website,     'NULL') AS \"website\",\
-                COALESCE(actfield,    'NULL') AS \"actfield\",\
-                COALESCE(insight,     'NULL') AS \"insight\",\
-                COALESCE(service,     'NULL') AS \"service\",\
-                COALESCE(subscribers, 'NULL') AS \"subscribers\"\
-                FROM companies",
-    
-    (err, rows) => 
+    try
     {
-        
-        if(err) 
+        const name = req.query.name || 'none';
+        const uid  = parseInt(req.query.uid, 10);
+
+        let payload = [];
+
+        if(name != 'none' && isNaN(uid))
         {
-            console.error(`\n[${new Date().toISOString()}] ${err}`);
-            return res.status(500).json(err);
+            payload = await GetEmployeeFromName(name);
         }
 
-        res.json(rows);
-    });
-});
+        else if(name === 'none' && !isNaN(uid) && uid > 0)
+        {
+            payload = await GetEmployeeFromUID(uid);
+        }
 
-beeapp.get("/employget", (req, res) =>
-{
-    beedb.all(`SELECT DISTINCT name FROM employees ORDER BY name ASC`,
-    
-    (err, rows) =>
+        else if(name === 'none' && isNaN(uid))
+        {
+            payload = await GetAllEmployees();
+        }
+
+        else
+        {
+            return res.status(400).json(
+            { 
+                success: false, 
+                error: 'Parâmetros de consulta inválidos.' 
+            });
+        }
+
+        return res.json({ success: true, count: payload.length,  data: payload });
+    }
+
+    catch(err)
     {
-        if(err)
-            return res.status(500).json(err);
-        
-        res.json(rows);
-        console.log(rows);
-    });
-});
+        console.error('[ ERRO ] Falha ao processar OnRequestEmployees:', err);
+
+        return res.status(500).json(
+        { 
+            success: false, 
+            error: 'Falha ao buscar colaboradores no banco de dados.' 
+        });
+    } 
+}
 
 beeapp.post("/addcomp", (req, res) =>
 {
