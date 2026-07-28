@@ -106,6 +106,9 @@ export class Database
 
             const rows = await this.all(sql, params.flat(Infinity));
 
+            if(rows.length === 0) 
+                return { success: false, reason: 'Registro não encontrado', [table]: [] };
+            
             return {
                 success: true,
                 reason: 'NO_REASON',
@@ -136,19 +139,19 @@ export class Database
             const row = await this.get(sql, params.flat(Infinity));
 
             if(!row) 
-                return { success: false, reason: 'Registro não encontrado', [table]: null };
+                return { success: false, reason: 'Registro não encontrado', value: null };
             
             return {
                 success: true,
                 reason: 'NO_REASON',
-                [table]: row[field] !== undefined ? row[field] : row
+                value: row[field] !== undefined ? row[field] : row
             };
         } 
 
         catch (err) 
         {
             console.error(`[ ERRO DB ] Falha em 'getValue' na tabela '${table}':`, err.error);
-            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), [table]: null };
+            return { success: false, reason: err.error ? err.error.message : (err.message || String(err)), value: null };
         }
     }
 

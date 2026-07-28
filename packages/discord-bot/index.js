@@ -7,9 +7,16 @@ import dotenv               from 'dotenv';
 import { fileURLToPath }    from 'url';
 
 import 
-{ 
-    SendSystemLog,  
-    beedb
+{   
+    beedb,
+    
+    LOG_TYPE,
+    SendDiscordLog,
+    SendConsoleLog, 
+    SendConsoleErr,
+    SendConsoleWarn,
+    SendConsoleDebug 
+
 } from '@beevolt/shared';
 
 import 
@@ -18,7 +25,13 @@ import
     GatewayIntentBits,
     Events,
     EmbedBuilder,
-    AttachmentBuilder
+    AttachmentBuilder,
+    MessageFlags,
+    ContainerBuilder, 
+    TextDisplayBuilder, 
+    SeparatorBuilder,
+    MediaGalleryBuilder, 
+    MediaGalleryItemBuilder
 
 } from 'discord.js';
 
@@ -50,8 +63,8 @@ const client = new Client
 
 client.once(Events.ClientReady, (readyClient) => 
 {
-    console.log(`\nBot online: ${readyClient.user.tag}`);
-
+    SendConsoleDebug("BEEA", `${readyClient.user.tag} acordou!`);
+   
     app.get("/health", (req, res) => {
         res.sendStatus(200);
     });
@@ -62,25 +75,18 @@ client.once(Events.ClientReady, (readyClient) =>
         {
             const channel = await readyClient.channels.fetch("1529939818199519242");
 
-            const tmp_embed = JSON.parse(JSON.stringify(embedlog));
+            await channel.send({
+                components: [req.body],
+                flags: MessageFlags.IsComponentsV2
+            });
 
-            tmp_embed.title             = `${tmp_embed.title}${req.body.title}`;
-            tmp_embed.color             = req.body.color;
-            tmp_embed.description       = req.body.msg;
-            tmp_embed.fields[0].value   = req.body.sysname;
-            tmp_embed.fields[1].value   = req.body.date;
-          
-            const Embed = EmbedBuilder.from(tmp_embed);
-
-            await channel.send({ embeds: [Embed] });
-    
             res.sendStatus(200);
         }
 
         catch(err)
         {
-            console.error("Erro na rota internal/log:", err);
-            console.error(err);
+            SendConsoleErr("ROTAS", "Erro na rota internal/log");
+
             res.sendStatus(500);
         }
     });
@@ -88,37 +94,29 @@ client.once(Events.ClientReady, (readyClient) =>
     app.listen(4000, async() => {});
 });
 
-client.on('messageCreate', async (message) => 
+client.on('interactionCreate', async (interaction) => 
 {
-    if(message.author.bot) return;
+    if(!interaction.isChatInputCommand()) return;
 
-    const prefix = '!';
-
-    if(!message.content.startsWith(prefix)) return;
-
-    const args = message.content.slice(prefix.length).trim().split(" ");
-
-    const command = args.shift().toLowerCase();
-
-    const cmd = commands[command];
+    const cmd = commands[interaction.commandName];
 
     if(!cmd) 
     {
-        await message.reply('Comando inexistente.');
+        await interaction.reply('Esse comando não existe!');
         return;
     }
 
     try 
     {   
-        await cmd(message, client, ...args);
+        await cmd(interaction, client);
     } 
 
     catch(err) 
     {
-        console.error(err);
-
-        await message.reply('Erro ao executar comando.');
+        SendConsoleErr("CMD", err);
+        await interaction.reply('Não consegui precisar seu comando de interação!');
     }
+
 });
 
 function CMD(name, callback) 
@@ -126,20 +124,120 @@ function CMD(name, callback)
     commands[name] = callback;
 }
 
-CMD("teste", async (message, client) => 
+CMD("empresas", async (interaction, client) => 
 {
+    const userData = await beedb.getValue('employees', 'name', "discord_uid = ?", interaction.user.id);
 
+    let msg = '';
+
+    if(userData.success)
+    {
+        const compData = await beedb.getRows('companies', 'name', "subscribers = ?", userData.value);
+        
+        if(compData.success)
+        {
+            for(const [idx, companie] of compData.companies.entries())
+            {
+                msg += `\`${idx + 1}.\` ${companie.name}\n`;
+            }
+
+            await SendContainerMessage(interaction,
+                `**:bee: \u250a LISTA DE __${String(userData.value).toUpperCase()}__**\n\n`,
+                interaction.user.displayAvatarURL(),
+                0xFF9955,
+                msg
+            );
+        }
+
+        else
+        {
+            await SendContainerMessage(interaction,
+                `### :warning: AVISO\n`,
+                BEEA_WARN_URL,
+                0xFF5555,
+                `\`\`\`Você não possuí empresas cadastradas!\`\`\``
+            )
+        }
+    }
+
+    else
+    {
+        await SendContainerMessage(interaction,
+            `### :red_circle: ERRO\n`,
+            BEEA_ERROR_URL,
+            0xFF5555,
+            `\`\`\`Você não possuí cadastro no banco de dados!\`\`\``
+        )
+    }
 });
 
-// app.use((req, res, next) =>
-// {
-//     console.log(`\nBOT [${new Date().toISOString()}] ${req.method} ${req.url}`);
+CMD("teste", async (interaction, client) => 
+{
+    const param1 = interaction.options.get('params1').value;
+    const param2 = interaction.options.get('params2').value;
+    const param3 = interaction.options.get('params3').value;
 
-//     if(req.method === "POST" || req.method === "PUT")
-//         console.log("data: ", req.body);
-    
-//     next();
-// });
+    SendConsoleLog(Number(param1), param2, param3);
 
+    await interaction.reply("Pronto");
+});
 
 client.login(process.env.TOKEN);
+
+async function SendContainerMessage(interaction, title, avatar, color, msg)
+{
+    try
+    {
+        const container = new ContainerBuilder({
+            
+            "accent_color": color,
+            "spoiler": false,
+            "components": [
+            {
+
+                "type": 10,
+                "content": title,
+            },
+
+            {
+                "type": 14,
+                "divider": true,
+                "spacing": 1
+            },
+            
+            {
+                "type": 9,
+                "components": [
+                    {
+                        "type": 10,
+                        "content": msg,
+                
+                    }
+
+                ],
+                "accessory": {
+                
+                    "type": 11,
+                    "media": {
+                        "url": avatar
+                    },
+                    "spoiler": false
+                } 
+            },
+        ]})
+
+
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
+
+        return true;
+    }
+
+    catch(error)
+    {
+        SendConsoleErr("BEEA", 'Houve um erro inesperado: ' + error);
+        return false;
+    }
+}

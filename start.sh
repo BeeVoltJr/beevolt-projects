@@ -11,6 +11,8 @@ trap cleanup SIGINT SIGTERM
 
 echo -e "Iniciando sistema BeeVolt ⚡ ...\n"
 
+node packages/discord-bot/src/register-commands.js
+
 echo -e "Iniciando beea-bot/index.js...\n"
 
 node packages/discord-bot/index.js &

@@ -1,42 +1,28 @@
 import express  from 'express';
 import cors     from 'cors';
-import 
-{ 
+
+import { 
     beedb,
 
 }   from './database.js';
+
+import { 
+
+    LOG_TYPE,
+    SendDiscordLog,
+    SendConsoleLog, 
+    SendConsoleErr,
+    SendConsoleWarn,
+    SendConsoleDebug 
+
+} from './logs.js';
 
 export const beeapp = express();
 
 beeapp.use(cors());
 beeapp.use(express.json());
 
-
-beeapp.listen(3000, async (err) => 
-{
-    if(err)
-    {
-        console.error(err);
-        SendSystemLog("NECTAR TRACK 🍯🐝", "ERROR", `Houve um erro ao carregar o sistema`);
-        return;
-    }
-
-    console.log("Bee Volt CRM iniciado...\n");
-
-    const company_count = await beedb.getCount('companies');
-    const employee_count = await beedb.getCount('employees');;
-
-    console.log(`Total de empresas: ${company_count}`);
-    console.log(`Total de colaboradores: ${employee_count}`);
-
-    // SendSystemLog("NECTAR TRACK 🍯🐝", "DEBUG", 
-    
-    // `\`\`\`O sistema foi inicializado com sucesso!\n\n` +
-    // `• ${company_count} empresas carregadas\n` +
-    // `• ${employee_count} calaboradores carregados\`\`\``
-
-    // );
-});
+beeapp.listen(3000, async (err) => {});
 
 beeapp.use((req, res, next) =>
 {
