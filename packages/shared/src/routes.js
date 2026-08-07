@@ -3,6 +3,12 @@ import cors     from 'cors';
 
 import { 
     beedb,
+    GetCompaniesFromInterval,
+    GetCompaniesFromSubs,
+    GetAllEmployees,
+    GetCompanyFromUID,
+    AddCompany,
+    UpdateCompany
 
 }   from './database.js';
 
@@ -26,10 +32,10 @@ beeapp.listen(3000, async (err) => {});
 
 beeapp.use((req, res, next) =>
 {
-    console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    // console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.url}`);
 
-    if(req.method === "POST" || req.method === "PUT")
-        console.log("data: ", req.body);
+    // if(req.method === "POST" || req.method === "PUT")
+    //     console.log("data: ", req.body);
     
     next();
 });
@@ -44,27 +50,23 @@ export async function OnRequestCompanies(req, res)
         let   end        = parseInt(req.query.end, 10);
         const subscriber = req.query.sub || 'none';
 
+        start   = isNaN(start) ? 0 : start;
+        end     = isNaN(end)   ? -1 : end;
+
         let payload = [];
 
         if(subscriber === 'none' && !isNaN(start) && !isNaN(end))
-        {
-            start = start == 0 ? 1 : start;
-            end = end < 0 ? await beedb.getCount('companies') : end;
-
             payload = await GetCompaniesFromInterval(start, end);
-        }
-
+        
         else if(subscriber != 'none' && isNaN(start) && isNaN(end))
-        {
             payload = await GetCompaniesFromSubs(subscriber);
-        }
-
+        
         else
         {
             return res.status(400).json(
             { 
                 success: false, 
-                error: 'Parâmetros de consulta inválidos. Forneça um intervalo OU um colaborador' 
+                error: 'Parâmetros de consulta inválidos. Forneça um intervalo ou um colaborador' 
             });
         }
 
@@ -133,120 +135,127 @@ export async function OnRequestEmployees(req, res)
     } 
 }
 
-beeapp.post("/addcomp", (req, res) =>
+beeapp.post("/api/companies", OnAddCompany);
+
+beeapp.put("/api/companies", OnUpdateCompany);
+
+export async function OnAddCompany(req, res) 
 {
-    try
+    try 
     {
-        const company = req.body;
-    
-        beedb.run(`INSERT INTO 
-            companies(name, email, phone, website, actfield, insight, service, subscribers)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
-            
-            [
-                company.name,    company.email,    company.phone, 
-                company.website, company.actfield, company.insight, 
-                company.service, company.subscribers
-            ],
+        const companyData = req.body;
 
-        function(err)
+        if (!companyData || !companyData.name) 
         {
-            if (err)
-            {
-                console.error(`\n[${new Date().toISOString()}] ${err}`);
-
-                return res.json(
-                {
-                    success: false,
-                    message:"Houve um erro no servidor interno. Avise o setor de P&D imediatamente!"
-                });
-            }
-
-            beedb.get(`SELECT uid, name, subscribers FROM companies WHERE name = '${company.name}'`, (err, row) =>
-            {
-                if(err)
-                {
-                    console.error(`\n[${new Date().toISOString()}] ${err}`);
-                    return;
-                }
-
-                SendSystemLog("NECTAR TRACK 🍯🐝", "WARN", `A empresa \`\`\`${row.name} [ LID: ${row.uid} ]\`\`\` foi adicionada por \`\`\`${row.subscribers}\`\`\``);
-                
-                console.warn(`\n[${new Date().toISOString()}] A empresa ${row.name} (${row.uid}) foi adicionada!`);
-            });
-
-            return res.json(
-            {
-                success: true,
-                id: this.lastID
-            });
-        });
-    }
-
-    catch(error)
-    {
-        return res.json(
-        {
-            success: false,
-            message: "Houve um erro no servidor interno. Avise o setor de P&D imediatamente!"
-        });
-    }
-});
-
-beeapp.post("/updatecomp/:id", (req, res) =>
-{
-    const uid   = req.params.id;
-    const data  = req.body;
-
-    if(Object.keys(data).length === 0)
-    {
-        return res.json(
-        {
-            success: false,
-            message: "Você precisa alterar algum campo antes de tentar enviar novos dados!"
-        });
-    }
-
-    const fields    = Object.keys(data);  
-
-    const setClause = fields.map(field => `${field} = ?`).join(", ");
-
-    const values    = [...fields.map(field => data[field])];
-   
-    beedb.run(`UPDATE companies SET ${setClause} WHERE uid = ${uid}`, values,
-
-    function(err)
-    {
-        if(err)
-        {
-            console.error(`\n[${new Date().toISOString()}] ${err}`);
-
-            return res.json(
-            {
+            return res.status(400).json({
                 success: false,
-                message: "Houve um erro ao atualizar os dados. Avise o setor de P&D imediatamente!"
+                message: 'O nome da empresa é obrigatório.'
             });
         }
-     
-        return res.json(
-        {
-            success: true,
-            changes: this.changes
-        });
-    });
 
-    beedb.get(`SELECT name, subscribers FROM companies WHERE uid = ${uid}`, (err, row) =>
-    {
-        if(err)
+        const result = await AddCompany(companyData);
+
+        if(!result.success) 
         {
-            console.error(`\n[${new Date().toISOString()}] ${err}`);
-            return;
+            SendConsoleErr("NECKTAR TRACK", `Erro ao adicionar empresa: ${result.reason}`);
+
+            return res.status(500).json({
+                success: false,
+                message: 'Houve um erro no servidor interno ao cadastrar a empresa.',
+                error: result.reason
+            });
         }
 
-        SendSystemLog("NECTAR TRACK 🍯🐝", "WARN", `A empresa \`\`\`${row.name} [ LID: ${uid} ]\`\`\` foi atualizada por \`\`\`${row.subscribers}\`\`\``);
-                
-        console.warn(`\n[${new Date().toISOString()}] A empresa ${row.name} (${uid}) foi atualizada!`);
-    });
-});
+        const addedCompany = await GetCompanyFromUID(result.lastID);
+        const compName = addedCompany ? addedCompany.name : companyData.name;
+        const subscriber = addedCompany ? addedCompany.subscribers : companyData.subscribers;
 
+        SendConsoleWarn("NECKTAR TRACK", `A empresa ${compName} [ LID: ${result.lastID} ] foi adicionada por ${subscriber}`);
+        
+        SendDiscordLog(
+            LOG_TYPE.warn, 
+            `A empresa \`\`\`${compName} [ LID: ${result.lastID} ]\`\`\` foi adicionada por \`\`\`${subscriber}\`\`\``
+        );
 
+        return res.status(201).json({
+            success: true,
+            message: 'Empresa cadastrada com sucesso!',
+            id: result.lastID
+        });
+    } 
+    
+    catch(err) 
+    {
+        SendConsoleErr("NECKTAR TRACK", `Falha crítica ao processar OnAddCompany: ${err.message || err}`);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Houve um erro no servidor interno. Avise o setor de P&D imediatamente!'
+        });
+    }
+}
+
+export async function OnUpdateCompany(req, res) 
+{
+    try 
+    {
+        const uid = parseInt(req.query.edit || req.query.uid, 10);
+        const updateData = req.body;
+
+        console.log(`[ OnUpdateCompany ] UID: ${uid}, UpdateData:`, updateData);
+
+        if(isNaN(uid) || uid <= 0) 
+        {
+            return res.status(400).json({
+                success: false,
+                message: 'Identificador (UID) da empresa inválido ou ausente.'
+            });
+        }
+
+        if(!updateData || Object.keys(updateData).length === 0) 
+        {
+            return res.status(400).json({
+                success: false,
+                message: 'Você precisa alterar algum campo antes de enviar novos dados!'
+            });
+        }
+
+        const result = await UpdateCompany(uid, updateData);
+
+        if (!result.success) 
+        {
+            SendConsoleErr("NECKTAR TRACK", `Erro ao atualizar empresa UID ${uid}: ${result.reason}`);
+            return res.status(500).json({
+                success: false,
+                message: 'Houve um erro ao atualizar os dados no servidor.',
+                error: result.reason
+            });
+        }
+
+        const updatedCompany = await GetCompanyFromUID(uid);
+        const compName = updatedCompany ? updatedCompany.name : 'Empresa';
+        const subscriber = updatedCompany ? updatedCompany.subscribers : 'Sistema';
+
+        SendConsoleWarn("NECKTAR TRACK", `A empresa ${compName} [ LID: ${uid} ] foi atualizada por ${subscriber}`);
+
+        SendDiscordLog(
+            LOG_TYPE.warn, 
+            `A empresa \`\`\`${compName} [ LID: ${uid} ]\`\`\` foi atualizada por \`\`\`${subscriber}\`\`\``
+        );
+
+        return res.json({
+            success: true,
+            message: 'Dados atualizados com sucesso!',
+            changes: result.changes
+        });
+    } 
+    
+    catch(err) 
+    {
+        SendConsoleErr("NECKTAR TRACK", `Falha crítica ao processar OnUpdateCompany: ${err.message || err}`);
+        return res.status(500).json({
+            success: false,
+            message: 'Houve um erro no servidor interno. Avise o setor de P&D imediatamente!'
+        });
+    }
+}

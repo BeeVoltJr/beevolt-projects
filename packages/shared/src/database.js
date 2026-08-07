@@ -235,3 +235,121 @@ export class Database
 }
 
 export const beedb = new Database(database);
+
+export async function GetCompaniesFromInterval(startUID, endUID) 
+{
+    let result;
+    if(endUID != -1)
+    {
+        result = await beedb.getRows('companies',
+        "COALESCE(uid, 'NULL')          AS uid,\
+        COALESCE(name, 'NULL')          AS name,\
+        COALESCE(email, 'NULL')         AS email,\
+        COALESCE(phone, 'NULL')         AS phone,\
+        COALESCE(website, 'NULL')       AS website,\
+        COALESCE(actfield, 'NULL')      AS actfield,\
+        COALESCE(insight, 'NULL')       AS insight,\
+        COALESCE(service, 'NULL')       AS service,\
+        COALESCE(subscribers, 'NULL')   AS subscribers",
+        'uid BETWEEN ? AND ?', startUID, endUID);
+    }
+
+    else 
+    {
+        result = await beedb.getRows('companies',
+        "COALESCE(uid, 'NULL')          AS uid,\
+        COALESCE(name, 'NULL')          AS name,\
+        COALESCE(email, 'NULL')         AS email,\
+        COALESCE(phone, 'NULL')         AS phone,\
+        COALESCE(website, 'NULL')       AS website,\
+        COALESCE(actfield, 'NULL')      AS actfield,\
+        COALESCE(insight, 'NULL')       AS insight,\
+        COALESCE(service, 'NULL')       AS service,\
+        COALESCE(subscribers, 'NULL')   AS subscribers",
+        'uid >= ?', startUID);        
+    }
+
+    return result.companies;
+}
+
+export async function GetCompaniesFromSubs(subscribers)
+{
+    const result = await beedb.getRows('companies',
+    "COALESCE(uid, 'NULL')          AS uid,\
+    COALESCE(name, 'NULL')          AS name,\
+    COALESCE(email, 'NULL')         AS email,\
+    COALESCE(phone, 'NULL')         AS phone,\
+    COALESCE(website, 'NULL')       AS website,\
+    COALESCE(actfield, 'NULL')      AS actfield,\
+    COALESCE(insight, 'NULL')       AS insight,\
+    COALESCE(service, 'NULL')       AS service,\
+    COALESCE(subscribers, 'NULL')   AS subscribers",
+    "subscribers = ?", subscribers);
+
+    return result.companies;
+}
+
+export async function GetAllEmployees()
+{
+    const result = await beedb.all('SELECT name FROM \'employees\' ORDER BY name ASC;');
+    
+    return result;
+}
+
+/**
+ * Busca os dados de uma única empresa pelo UID
+ * @param {number|string} uid 
+ */
+export async function GetCompanyFromUID(uid) 
+{
+    const result = await beedb.getRows('companies',
+        "COALESCE(uid, 'NULL')          AS uid,\
+        COALESCE(name, 'NULL')          AS name,\
+        COALESCE(email, 'NULL')         AS email,\
+        COALESCE(phone, 'NULL')         AS phone,\
+        COALESCE(website, 'NULL')       AS website,\
+        COALESCE(actfield, 'NULL')      AS actfield,\
+        COALESCE(insight, 'NULL')       AS insight,\
+        COALESCE(service, 'NULL')       AS service,\
+        COALESCE(subscribers, 'NULL')   AS subscribers",
+        'uid = ?', uid);
+
+    if (!result.success || result.companies.length === 0) {
+        return null;
+    }
+
+    return result.companies[0];
+}
+
+/**
+ * Insere uma nova empresa no banco de dados
+ * @param {Object} companyData - Objeto contendo os campos da empresa
+ */
+export async function AddCompany(companyData) 
+{
+    return await beedb.insert('companies', companyData);
+}
+
+/**
+ * Atualiza os campos de uma empresa existente pelo UID
+ * @param {number|string} uid 
+ * @param {Object} companyData - Objeto contendo apenas os campos alterados ou atualizados
+ */
+export async function UpdateCompany(uid, companyData) 
+{
+    if (!companyData || Object.keys(companyData).length === 0) {
+        return { 
+            success: false, 
+            reason: 'Nenhum campo foi fornecido para atualização.', 
+            changes: 0 
+        };
+    }
+
+    const fields = Object.keys(companyData);
+    const values = Object.values(companyData);
+
+    // Monta a cláusula SET de forma dinâmica e segura (ex: "name = ?, email = ?")
+    const setClause = fields.map(field => `${field} = ?`).join(', ');
+
+    return await beedb.update('companies', setClause, 'uid = ?', ...values, uid);
+}

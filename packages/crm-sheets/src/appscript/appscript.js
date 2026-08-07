@@ -1,226 +1,577 @@
-const COLOR_1 =                     "#FFAA59"
-const COLOR_2 =                     "#FFE3A5"
-const COLOR_3 =                     "#FFD793"
-const REMOVE_FILE_STRING =          "crm-sheet-"
-const MAX_BOUNDS_COLUMS_COLORED =   20
+const COLOR_ROW_1                   = "#FFAA55"
+const COLOR_ROW_2                   = "#FFD793"
+
+const REMOVE_FILE_STRING            = "crm-sheet-"
+const MAX_BOUNDS_COLUMS_COLORED     = 20
+const MAIN_URL                      = "https://patrol-clubbing-alienate.ngrok-free.dev"
+const MIN_HEIGHT_COLORED            = 5
+const MIN_WIDTH_COLORED             = 5
+let    
+    sheet = {commom: null, fu1: null, fu2: null, fu3: null},
+    filename,
+    sheetType,
+    username
+;
+
+SHEET_TYPE = Object.freeze({
+
+  main: 1,
+  user:  2,
+
+});
+
+SHEET_NAME = Object.freeze({
+
+    commom: 'Empresas Cadastradas',
+    fu1:    'FU1',
+    fu2:    'FU2',
+    fu3:    'FU3'
+});
+
+class Sheets
+{
+    constructor(name)
+    {
+        this.name  = name;
+        this.ss = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
+    }
+
+    init(headerContent)
+    {
+        this.ss.setRowHeights(1, 50, 50);
+
+        this.stripColor(1, 50, 26);
+
+        const headerRange = this.ss.getRange(1, 1, 1, headerContent.length);
+
+        headerRange.setValues([headerContent]);
+
+        headerRange
+            .setFontFamily("Arial")
+            .setFontSize(12)
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle")
+            .setWrap(true)
+            .setFontWeight("bold")
+            .setFontColor("#131313")
+        ;
+
+        this.resizeColumns();
+    }
+
+    stripColor(startRow, numRows, numCols)
+    {
+        if(numRows <= 0 || numCols <= 0) return;
+
+        const colors = [];
+        for (let i = 0; i < numRows; i++) {
+            const currentRow = startRow + i;
+            const color = (currentRow % 2 === 1) ? COLOR_ROW_1 : COLOR_ROW_2;
+            colors.push(new Array(numCols).fill(color));
+        }
+
+        this.ss.getRange(startRow, 1, numRows, numCols).setBackgrounds(colors);
+    }
+
+    insertData(start, data)
+    {    
+        if(!data || data.length === 0) return 0;
+
+        let matrix = [];
+        const items = Array.isArray(data) ? data : Object.values(data);
+
+        items.forEach(item => 
+        {
+            if (!item) return;
+
+            // CASO 1: Veio do formulário (Array simples de valores)
+            if(Array.isArray(item))
+                matrix.push(item);
+    
+            else if (typeof item === 'object') 
+            {
+                matrix.push([
+                    item.id || item.uid || item.LEADID || '',
+                    item.name || item.company || item.EMPRESA || '',
+                    item.email || item.EMAIL || '',
+                    item.phone || item.TELEFONE || '',
+                    item.website || item.SITE || '',
+                    item.actfield || item.RAMO || '',
+                    item.insight || item.INSIGHT || '',
+                    item.service || item.SERVIÇO || '',
+                    item.subscribers || item.subscriber || item.RESPONSÁVEL || '',
+                ]);
+            }
+        });
+
+        // Trata caso 'data' seja uma única linha simples de valores
+        if (matrix.length === 0 && Array.isArray(data) && typeof data[0] !== 'object') {
+            matrix = [data];
+        }
+
+        const row = matrix.length;
+        if (row === 0) return 0;
+
+        const col = matrix[0].length;
+        if (col === 0) return 0;
+
+        const targetRow = start <= 1 ? 2 : start;
+        const targetRange = this.ss.getRange(targetRow, 1, row, col);
+
+        targetRange.setValues(matrix);
+
+        this.stripColor(targetRow, row + MIN_HEIGHT_COLORED, 26);
+
+        targetRange
+            .setFontFamily("Arial")
+            .setFontSize(10)
+            .setHorizontalAlignment("center")
+            .setVerticalAlignment("middle")
+            .setWrap(true);
+        
+        this.resizeColumns();
+    }
+
+    resizeColumns()
+    {
+        const col = this.ss.getLastColumn();
+        const allValues = this.ss.getRange(1, 1, this.getRowCount(), col).getDisplayValues();
+
+        for(let colIdx = 0; colIdx < col; colIdx++) 
+        {
+            let maxLen = 0;
+
+            for(let rowIdx = 0; rowIdx < allValues.length; rowIdx++) 
+            {
+                const cellValue = String(allValues[rowIdx][colIdx] || "");
+
+                if (cellValue.length > maxLen)
+                    maxLen = cellValue.length;
+            }
+
+            const calculatedWidth = Math.min(Math.max(maxLen * 8.5, 75), 250);
+            this.ss.setColumnWidth(colIdx + 1, calculatedWidth);
+        }
+    }
+
+    updateData(row, data) 
+    {
+        if (!row || row < 2 || !data || data.length === 0) return;
+
+        const matrix = Array.isArray(data[0]) ? data : [data];
+        const numRows = matrix.length;
+        const numCols = matrix[0].length;
+
+        this.ss.getRange(row, 1, numRows, numCols).setValues(matrix);
+    }
+
+    getSelectedRow()
+    {
+        const activeCell = this.ss.getActiveCell();
+
+        if(!activeCell) return [];
+
+        const row = activeCell.getRow();
+        const lastRow = this.ss.getLastRow();
+
+        if (row < 2 || row > lastRow)return [];
+
+        return this.ss.getRange(row, 1, 1, this.ss.getLastColumn()).getValues()[0];
+    }
+
+    getRowCount()
+    {
+        return this.ss.getLastRow();
+    }
+}
 
 function onOpen() 
 {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
-    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
+    initSheets();
+
+    switch(sheetType)
+    {
+        case SHEET_TYPE.main:
+        {
+            SpreadsheetApp.getUi()
+            .createMenu("BeeVolt")
+                .addItem("Atualizar Dados", "loadSpreadSheet")
+                .addItem("Nova Empresa",    "addSpreadSheet")
+                .addItem("Editar Empresa",  "editSpreadSheet")
+                .addItem("Restaurar Dados", "restoreSpreadSheet")
+            .addToUi();
+
+            break;
+        }
+
+        case SHEET_TYPE.user:
+        {
+            SpreadsheetApp.getUi()
+            .createMenu("BeeVolt")
+                .addItem("Atualizar Dados", "beecore.loadSpreadSheet")
+                .addItem("Nova Empresa",    "beecore.addSpreadSheet")
+                .addItem("Editar Empresa",  "beecore.editSpreadSheet")
+            .addToUi();
+
+            break;
+        }
+    }
+
+    sheet.commom.init([ "LEADID", "EMPRESA", "EMAIL", "TELEFONE", "SITE", "RAMO DE ATIVIDADE", "INSIGHT", "SERVIÇO", "RESPONSÁVEL"]);
+    sheet.fu1.init(["teste1", "teste2", "teste3"]);
+    sheet.fu2.init(["teste4", "teste5", "teste6"]);
+    sheet.fu3.init(["teste7", "teste8", "teste9"]);
+}
+
+function loadSpreadSheet() 
+{
+    initSheets() ;
     
-    if(sheet_type == "user")
+    if(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName() !== SHEET_NAME.commom)
     {
-        SpreadsheetApp.getUi().createMenu("BeeVolt")
-        .addItem("Atualizar Dados", "beecore.LoadUser")
-        .addItem("Nova Empresa", "beecore.Add")
-        .addItem("Editar Empresa", "beecore.Edit")
-        .addToUi();
-    }
-
-    else if(sheet_type == "main")
-    {
-        SpreadsheetApp.getUi().createMenu("BeeVolt")
-        .addItem("Atualizar Dados", "LoadDB")
-        .addItem("Nova Empresa", "Add")
-        .addItem("Editar Empresa", "Edit")
-        .addToUi();
-    }
-
-    ColourSheet(sheet, 5, 20);
-}
-
-function ColourSheet(sheet, height, width) 
-{
-    for(let i = 1; i <= height + MAX_BOUNDS_COLUMS_COLORED; i++) 
-    {
-        const rowRange = sheet.getRange(i, 1, 1, width)
-
-        if (i % 2)  rowRange.setBackground(COLOR_2);
-        else        rowRange.setBackground(COLOR_3);
-    }
-}
-
-function ClearSheet(sheet) 
-{
-    sheet.clear();
-    sheet.setRowHeights(1, sheet.getMaxRows(), 21);
-}
-
-function Load(user) 
-{
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    ClearSheet(sheet);
-
-    let companies = {};
-
-    switch(user)
-    {
-        case 'none':
-
-            const response = UrlFetchApp.fetch(
-            `https://patrol-clubbing-alienate.ngrok-free.dev/dbget`,
-            {
-                headers:
-                {
-                    "ngrok-skip-browser-warning": "true"
-                }
-            });
-
-            if(response.getResponseCode() >= 400)
-            {
-                SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
-                return;
-            }
-
-            companies = JSON.parse(response.getContentText());
-
-            if(companies.length === 0) 
-            {
-                SpreadsheetApp.getUi().alert(`Não há empresas cadastradas no banco de dados. Avise um membro do setor de P&D imediantamente!`);
-                return;
-            }
-            
-        break;
-        
-        default:
-  
-            const response = UrlFetchApp.fetch(
-            `https://patrol-clubbing-alienate.ngrok-free.dev/companys/${user}}`,
-            {
-                headers:
-                {
-                    "ngrok-skip-browser-warning": "true"
-                }
-            });
-
-            if(response.getResponseCode() >= 400)
-            {
-                SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
-                return;
-            }
-
-            companies = JSON.parse(response.getContentText());
-
-            if (companies.length === 0) 
-            {
-                SpreadsheetApp.getUi().alert(`${user} não possui empresas cadastradas. Adicione uma empresa primeiro!`);
-                return;
-            }
-
-        break;
-    }
-
-    BuildMainSheet(sheet, companies);
-}
-
-function LoadDB() { Load("none"); }
-
-function LoadUser() 
-{
-    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
-    username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
-
-    Load(username);
-}
-
-function Add() 
-{
-    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
-    const username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
-    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
-
-    const template      = HtmlService.createTemplateFromFile("forms");
-
-    template.mode       = "add";
-    template.user       = (sheet_type === 'user') ? username : 'none';
-    template.colabors   = GetColaborList();
-    template.company    = null;
-
-    const html = template.evaluate().setWidth(1024).setHeight(720);
-
-    const title = (sheet_type === 'user') ? `${username} | Adicionar Empresa` : "Adicionar Empresa";
-
-    SpreadsheetApp.getUi().showModalDialog(html, title);
-}
-
-function Edit() 
-{
-    const filename = SpreadsheetApp.getActiveSpreadsheet().getName();
-    const username = filename.replace(REMOVE_FILE_STRING, "").replace("_", " ");
-    const sheet_type = filename.includes(REMOVE_FILE_STRING) ? "user" : "main";
-
-    const template      = HtmlService.createTemplateFromFile("forms");
-
-    template.mode       = "edit";
-    template.user       = (sheet_type === 'user') ? username : 'none';
-    template.colabors   = null;
-    template.company    = GetSelectedCompany();
-
-    if(Object.keys(template.company).length === 0) 
-    {
-        SpreadsheetApp.getUi().alert("Selecione uma linha que contenha uma empresa válida!");
+        SpreadsheetApp
+        .getUi()
+            .alert(`Você só pode editar empresas na planilha principal ${SHEET_NAME.commom}!`);
         return;
     }
 
-    const html = template.evaluate().setWidth(1024).setHeight(720);
+    let 
+        res
+    ;
+    
+    const lastRow = sheet.commom.getRowCount();
 
-    const title = (sheet_type === 'user') ? `${username} | Editar Empresa` : "Editar Empresa";
+    switch(username)
+    {
+        case 'main':
+        {
+            try
+            {
+                res = UrlFetchApp.fetch(
+                `${MAIN_URL}/api/companies/?start=${lastRow}&end=-1`,
+                {
+                    method: 'GET',
+                    headers:
+                    {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
+            }
+            
+            catch(error)
+            {
+                console.log(`Houve um erro! Motivo: ${error.toString()}`);
+                SpreadsheetApp
+                    .getUi()
+                        .alert(`Houve um erro! Motivo: ${error.toString()}`);
+            }
 
-    SpreadsheetApp.getUi().showModalDialog(html, title);
+            break;
+        }
+
+        default:
+        {
+            try
+            {
+                res = UrlFetchApp.fetch(
+                `${MAIN_URL}/api/companies/?sub=${username}`,
+                {
+                    method: 'GET',
+                    headers:
+                    {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
+            } 
+            
+            catch(error)
+            {
+                console.log(`Houve um erro! Motivo: ${error.toString()}`);
+                SpreadsheetApp
+                    .getUi()
+                        .alert(`Houve um erro! Motivo: ${error.toString()}`);
+            }
+            
+            break;
+        }
+    }
+
+    const response = JSON.parse(res.getContentText());
+
+    if(res.getResponseCode() == 400 || !response.success)
+    {    
+        SpreadsheetApp
+        .getUi()
+            .alert(`Houve um erro ao tentar se comunicar com o servidor! Motivo: ${response.error}.`);
+        
+        console.log(`Houve um erro ao tentar se comunicar com o servidor! Motivo: ${response.error}.`);
+
+        return 0;
+    }
+    
+    if(response.count === 0 && response.success) 
+    {
+        SpreadsheetApp
+        .getUi()
+            .alert(`Planilha já está atualizada! Nenhuma empresa nova foi encontrada.`);
+        
+        return 1;
+    }
+
+    sheet.commom.insertData(lastRow, response.data);
 }
 
-function GetColaborList() 
+function addSpreadSheet() 
 {
-    const response = UrlFetchApp.fetch(
-    "https://patrol-clubbing-alienate.ngrok-free.dev/subscribers",
+    initSheets();
+    
+    if(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName() !== SHEET_NAME.commom)
     {
+        SpreadsheetApp
+        .getUi()
+            .alert(`Você só pode adicionar empresas na planilha principal ${SHEET_NAME.commom}!`);
+        return;
+    }
+
+    const res = UrlFetchApp.fetch(
+    `${MAIN_URL}/api/employees`,
+    {
+        method: 'GET',
         headers:
         {
             "ngrok-skip-browser-warning": "true"
         }
     });
 
-    if(response.getResponseCode() >= 400)
+    const response = JSON.parse(res.getContentText());
+
+    if(res.getResponseCode() == 400)
     {
-        SpreadsheetApp.getUi().alert("Houve um erro ao tentar se comunicar com o servidor.\nTente novamente mais tarde.");
+        SpreadsheetApp
+        .getUi()
+            .alert(`Houve um erro ao tentar se comunicar com o servidor. Motivo: ${response.error}`);
+        
         return;
     }
 
-    return JSON.parse(response.getContentText());
+    const template      = HtmlService.createTemplateFromFile("forms");
+
+    template.mode       = "add";
+    template.user       = username;
+    template.colabors   = response.data;
+    template.company    = null;
+
+    const html = template.evaluate().setWidth(1024).setHeight(720);
+
+    const title = (sheetType === 'user') ? `${username} | Adicionar Empresa` : "Adicionar Empresa";
+
+    SpreadsheetApp
+    .getUi()
+        .showModalDialog(html, title);
 }
 
-function GetSelectedCompany() 
+function editSpreadSheet() 
 {
-    const sheet     = SpreadsheetApp.getActiveSheet();
-    const row       = sheet.getActiveCell().getRow();
-    const lastRow   = sheet.getLastRow();
-
-    if (row < 2 || row > lastRow) return {};
+    initSheets();
     
-    const data = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+    if(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName() !== SHEET_NAME.commom)
+    {
+        SpreadsheetApp
+        .getUi()
+            .alert(`Você só pode editar empresas na planilha principal ${SHEET_NAME.commom}!`);
+        return;
+    }
 
-    return {
-        uid: data[0],
-        name: data[1],
-        email: data[2],
-        phone: data[3],
-        website: data[4],
-        actfield: data[5],
-        insight: data[6],
-        service: data[7]
+    const activeCell = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getActiveCell();
+
+    const row = activeCell.getRow();
+
+    if (!activeCell || row < 2) 
+    {
+        SpreadsheetApp.getUi().alert("Por favor, selecione uma linha válida!");
+        return;
+    }
+
+    const rowData = sheet.commom.getSelectedRow();
+    
+    if(rowData.length === 0) 
+    {
+        SpreadsheetApp.getUi().alert("Por favor, selecione uma linha válida!");
+        return;
+    }
+
+    const company = {
+        row:        row,          
+        uid:        rowData[0],   
+        name:       rowData[1],
+        email:      rowData[2],
+        phone:      rowData[3],
+        website:    rowData[4],
+        actfield:   rowData[5],
+        insight:    rowData[6],
+        service:    rowData[7],
+        subscribers: rowData[8]
     };
+    const template      = HtmlService.createTemplateFromFile("forms");
+
+    template.mode       = "edit";
+    template.user       = (sheetType === 'user') ? username : 'main';
+    template.colabors   = null;
+    template.company    = company;
+
+    const html = template.evaluate().setWidth(1024).setHeight(720);
+
+    const title = (sheetType === 'user') ? `${username} | Editar Empresa` : "Editar Empresa";
+
+    SpreadsheetApp
+    .getUi()
+        .showModalDialog(html, title);
 }
 
-function AddCompany(data) 
+function restoreSpreadSheet()
+{
+    initSheets();
+    
+    if(SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName() !== SHEET_NAME.commom)
+    {
+        SpreadsheetApp
+        .getUi()
+            .alert(`Você só pode editar empresas na planilha principal ${SHEET_NAME.commom}!`);
+        return;
+    }
+
+    let 
+        res
+    ;
+    
+    switch(username)
+    {
+        case 'main':
+        {
+            try
+            {
+                res = UrlFetchApp.fetch(
+                `${MAIN_URL}/api/companies/?start=1&end=-1`,
+                {
+                    method: 'GET',
+                    headers:
+                    {
+                        "ngrok-skip-browser-warning": "true"
+                    }
+                });
+            }
+            
+            catch(error)
+            {
+                console.log(`Houve um erro! Motivo: ${error.toString()}`);
+                SpreadsheetApp
+                    .getUi()
+                        .alert(`Houve um erro! Motivo: ${error.toString()}`);
+            }
+
+            break;
+        }
+
+        default:
+        {
+            break;
+        }
+    }
+
+    if(res.getResponseCode() == 400)
+    {
+        const data = JSON.parse(res.getContentText());
+        
+        SpreadsheetApp
+        .getUi()
+            .alert(`Houve um erro ao tentar se comunicar com o servidor! Motivo: ${data.error}.`);
+        
+        console.log(`Houve um erro ao tentar se comunicar com o servidor! Motivo: ${data.error}.`);
+
+        return 0;
+    }
+
+    const response = JSON.parse(res.getContentText());
+
+    if(response.length === 0) return;
+
+    sheet.commom.insertData(2, response.data);
+}
+
+function changeSheet(sheetName, operator, row, data)
+{
+    initSheets();
+
+    const targetSheet = Object.values(sheet).find(s => s.name === sheetName);
+
+    if(targetSheet)
+    {
+        if(operator === "insert")
+        {
+            const lastRow = targetSheet.getRowCount();
+            const nextRow = lastRow < 1 ? 2 : lastRow + 1;
+
+            const rowArray = [
+                lastRow,                  // Coluna 1: UID
+                data.name      || '',     // Coluna 2: Nome
+                data.email     || '',     // Coluna 3: Email
+                data.phone     || '',     // Coluna 4: Telefone
+                data.website   || '',     // Coluna 5: Website
+                data.actfield  || '',     // Coluna 6: Ramo de Atuação
+                data.insight   || '',     // Coluna 7: Insight
+                data.service   || '',     // Coluna 8: Serviço
+                data.subscribers || ''    // Coluna 9: Colaborador/Inscrito
+            ];
+
+            targetSheet.insertData(nextRow, rowArray);
+        }
+        
+        else if(operator === "edit")
+        {
+            const uid = Array.isArray(data) ? data[0] : (data.uid || row);
+
+            const rowArray = Array.isArray(data) ? data : [
+                uid,                     // Coluna A (1): UID (Mantém o mesmo)
+                data.name       || '',   // Coluna B (2): Nome
+                data.email      || '',   // Coluna C (3): Email
+                data.phone      || '',   // Coluna D (4): Telefone
+                data.website    || '',   // Coluna E (5): Website
+                data.actfield   || '',   // Coluna F (6): Ramo de Atuação
+                data.insight    || '',   // Coluna G (7): Insight
+                data.service    || '',   // Coluna H (8): Serviço
+                data.subscribers|| ''    // Coluna I (9): Colaborador / Responsável
+            ];
+
+            targetSheet.updateData(row + 1, rowArray);
+        }
+    }   
+}
+
+function BeeCore(action, ...args) 
+{
+    const routes = {
+        "loadSpreadSheet": loadSpreadSheet,
+        "addSpreadSheet":  addSpreadSheet,
+        "editSpreadSheet": editSpreadSheet,
+        "addCompany":      addCompany,
+        "editCompany":     editCompany,
+        "changeSheet":     changeSheet
+    };
+
+    if(routes[action]) 
+        return routes[action](...args);
+    
+    throw new Error(`Ação '${action}' não encontrada no BeeCore.`);
+}
+
+function addCompany(data) 
 {
     try 
     {
         const response = UrlFetchApp.fetch(
-        "https://patrol-clubbing-alienate.ngrok-free.dev/addcompy",
+        `${MAIN_URL}/api/companies`,
         {
-            method:         "post",
+            method:         'POST',
             contentType:    "application/json",
             payload:        JSON.stringify(data),
 
@@ -235,23 +586,25 @@ function AddCompany(data)
         return json;
     }
 
-    catch (error) 
+    catch(error) 
     {
         return {
             success: false,
-            message: "Houve um erro ao tentar se conectar ao servidor. Avise o setor de P&D imediantamente!"
+            message: "Houve um erro ao tentar se conectar ao servidor."
         };
     }
 }
 
-function EditCompany(uid, data) 
+function editCompany(uid, data) 
 {
+    console.log(uid, "TESTE");
+
     try 
     {
         const response = UrlFetchApp.fetch(
-        `https://patrol-clubbing-alienate.ngrok-free.dev/updatecompany/${uid}`,
+        `${MAIN_URL}/api/companies/?edit=${uid}`,
         {
-            method:         "post",
+            method:         'PUT',
             contentType:    "application/json",
             payload:        JSON.stringify(data),
 
@@ -266,70 +619,36 @@ function EditCompany(uid, data)
         return json;
     }
 
-    catch (error)
+    catch(error)
     {
         return {
             success: false,
-            message: "Houve um erro ao tentar se conectar ao servidor. Avise o setor de P&D imediantamente!"
+            message: "Houve um erro ao tentar se conectar ao servidor."
         };
     }
 }
 
-function BuildMainSheet(sheet, companies) 
+function initSheets() 
 {
-    const headers = Object.keys(companies[0]);
+    sheet.commom = new Sheets(SHEET_NAME.commom);
+    sheet.fu1    = new Sheets(SHEET_NAME.fu1);
+    sheet.fu2    = new Sheets(SHEET_NAME.fu2);
+    sheet.fu3    = new Sheets(SHEET_NAME.fu3);
 
-    const values = [];
-
-    values.push(headers);
-
-    companies.forEach(company => 
+    if(!(Object.values(sheet).every(value => value !== null)))
     {
-        values.push(headers.map(header => company[header]));
-    });
+        SpreadsheetApp
+        .getUi()
+            .alert(`Houve um erro ao abrir as planilhas!\nAbra um ticket, URGENTE, para equipe de P&D no Discord!`);        
+    }
 
-    const width = values[0].length;
-    const height = values.length;
+    filename      = SpreadsheetApp.getActiveSpreadsheet().getName();
+        
+    const regex   = new RegExp(`${REMOVE_FILE_STRING}(.*)`);
 
-    const range = sheet.getRange(1, 1, height, width);
+    const matches = filename.match(regex);
 
-    range.setValues(values);
+    username      = matches ? matches[1].replace(/_/g, " ") : 'main';
 
-    sheet.setName("Empresas Cadastradas");
-    sheet.setRowHeights(1, 1, 25);
-    sheet.setRowHeights(2, height - 1, 50);
-
-    const header_range = sheet.getRange(1, 1, 1, width)
-    const texts_range  = sheet.getRange(1, 5, height, 7)
-
-    range.setFontFamily("Arial")
-    range.setFontSize(10)
-    range.setHorizontalAlignment("center")
-    range.setVerticalAlignment("middle")
-    range.setWrap(false)
-    range.setBorder(true, true, true, true, true, true)
-
-    header_range.setBackground(COLOR_1);
-    header_range.setFontWeight("bold")
-    header_range.setFontSize(12)
-
-    texts_range.setWrap(true)
-
-    headers.forEach((header, colIndex) => 
-    {
-        let maxLength = header.length;
-
-        companies.forEach(company => 
-        {
-            const text = String(company[header] || "");
-
-            if (text.length > maxLength) maxLength = text.length;
-        });
-
-        const width_aprox = Math.min(Math.max(maxLength * 7.5, 80), 260);
-
-        sheet.setColumnWidth(colIndex + 1, width_aprox);
-    });
-
-    ColourSheet(sheet, height, 20);
-}
+    sheetType     = username === 'main' ? SHEET_TYPE.main : SHEET_TYPE.user;
+} 

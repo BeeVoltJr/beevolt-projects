@@ -326,8 +326,8 @@
         
         const mode = "<?= mode ?>";
         const user = "<?= user ?>";
-        const colabors = <?= JSON.stringify(colabors) ?>;
-        const company = JSON.parse(<?= JSON.stringify(company) ?>);
+        let colabors = <?= JSON.stringify(colabors) ?>;
+        let company = <?= JSON.stringify(company) ?>;
 
         window.onload = () =>
         {
@@ -338,7 +338,7 @@
                 document.getElementById("title").innerText          = "Adicionar Empresa";
                 document.getElementById("submitButton").innerText   = "Adicionar Empresa";
                 
-                if(user == 'none')
+                if(user == 'main')
                     SetColabors(JSON.parse(colabors));
                 else
                 {
@@ -354,7 +354,7 @@
                 document.getElementById("title").innerText          = "Editar Empresa";
                 document.getElementById("submitButton").innerText   = "Salvar Empresa";
             
-                fillForm(company);
+                fillForm(JSON.parse(company));
 
                 document.getElementById("name").addEventListener("input", ToggleElementUsed);
                 document.getElementById("email").addEventListener("input", ToggleElementUsed);
@@ -411,7 +411,7 @@
         {
             const error = document.getElementById("error");
 
-            error.innerText = message;
+            error.innerHTML = message;
             error.style.display = "block";
         }
 
@@ -430,14 +430,14 @@
 
         function fillForm(company) 
         {
-            document.getElementById("uid-field").innerText  = "LEADUID-" + `${Number(company.uid)}`.padStart(4, '0');
+            document.getElementById("uid-field").innerText  = "LEADUID " + `${Number(company.uid)}`.padStart(4, '0');
             document.getElementById("name").value     = company.name;
             document.getElementById("email").value    = company.email;
             document.getElementById("phone").value    = company.phone;
             document.getElementById("website").value  = company.website;
             document.getElementById("actfield").value = company.actfield;
             document.getElementById("insight").value  = company.insight;
-            document.getElementById("service").value = company.service;
+            document.getElementById("service").value  = company.service;
         }
 
         function SetColabors(colabors)
@@ -451,7 +451,7 @@
                 const option = document.createElement("option");
 
                 option.value = person.id;
-                option.textContent = person.subscribers;
+                option.textContent = person.name;
                 
                 select.appendChild(option);
             });
@@ -462,14 +462,14 @@
             clearInvalid();
             hideMessages();
     
-            let data = {};
-
+            let data = { };
+        
             const button = document.getElementById("submitButton");
-
+        
             switch(mode)
             {
                 case 'add':
-                
+                    
                     data =
                     {
                         name:           document.getElementById("name").value.trim()            || "N/A",
@@ -518,6 +518,13 @@
                     {
                         data[field.id] = field.value.trim() || "N/A";
                     });
+
+                    if(Object.keys(data).length === 0)
+                    {
+                        showError("Nenhum campo foi alterado para edição.");
+                        return;
+                    }
+
 
                     if("name" in data && data.name == 'N/A')
                     {
@@ -576,11 +583,12 @@
             switch(mode)
             {
                 case 'add':
-
-                    google.script.run.withSuccessHandler((response) => 
+                {
+                    google.script.run
+                    .withSuccessHandler((response) => 
                     {
-                        button.disabled = false;
-                        button.innerText = "Adicionar Empresa";
+                        button.disabled                                  = false;
+                        button.innerText                                 = "Adicionar Empresa";
                         document.getElementById("loading").style.display = "none";
 
                         if(response.success) 
@@ -593,44 +601,75 @@
                             });
 
                             document.getElementById("subscribers").value = "";
-                            
+
                             google.script.run.withSuccessHandler(() =>
                             {
-                            
+                                setTimeout(() =>
+                                {
+                                    google.script.host.close();
+                                }, 1000);
                             })
                             .withFailureHandler(err =>
                             {
                                 console.error(err);
-                                showError("Houve um erro ao atualizar a planilha. Avise o setor de P&D.<br><br>Fechando Formulário ...");
-                                
+                                showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
+                        
                                 setTimeout(() =>
                                 {
                                     google.script.host.close();
                                 }, 5000);
                             })
-                            .BeeCore("Load", user);  
+                            .BeeCore("changeSheet", 'Empresas Cadastradas', 'insert', null, data);  
                         }
                         
                         else 
-                        {
-                            showError(response.message);
-                        }
+                            showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + response.message + "<br><br>Fechando Formulário ...");
+                        
                     })
                     .withFailureHandler((err) => 
                     {
                         console.error(err);
-                        showError("Houve um erro interno! Avise o setor de P&D.<br><br>Fechando Formulário ...");
+                        showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
                                 
                         setTimeout(() =>
                         {
                             google.script.host.close();
                         }, 5000);
                     })
-                    .BeeCore("AddCompany", data);
-                break;
-                
+                    .BeeCore("addCompany", data);
+
+                    break;
+                }
+
                 case 'edit':
-                    google.script.run.withSuccessHandler((response) => 
+                {
+                    const uidField = document.getElementById("uid-field");
+                    const uidText = uidField ? uidField.innerText : '';
+                    const uid = parseInt(uidText.replace(/\D/g, ''), 10);
+
+                    if(isNaN(uid) || !uid) 
+                    {
+                        showError("Não foi possível identificar o UID da empresa para edição.");
+                        return;
+                    }
+                    
+                    const parseSub = JSON.parse(company);
+
+                    const updatedArray = 
+                    [
+                        uid,
+                        document.getElementById("name").value.trim(),
+                        document.getElementById("email").value.trim(),
+                        document.getElementById("phone").value.trim(),
+                        document.getElementById("website").value.trim(),
+                        document.getElementById("actfield").value.trim(),
+                        document.getElementById("insight").value.trim(),
+                        document.getElementById("service").value.trim(),
+                        parseSub.subscribers // Coluna 9: Responsável
+                    ];
+
+                    google.script.run
+                    .withSuccessHandler((response) => 
                     {
                         document.getElementById("loading").style.display = "none";
 
@@ -648,38 +687,39 @@
                             .withFailureHandler(err =>
                             {
                                 console.error(err);
-                                showError("Houve um erro ao atualizar a planilha. Avise o setor de P&D.<br><br>Fechando Formulário ...");
-                                
+                                showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
+                             
                                 setTimeout(() =>
                                 {
                                     google.script.host.close();
                                 }, 5000);
                             })
-                            .BeeCore("Load", user);  
+                            .BeeCore("changeSheet", 'Empresas Cadastradas', 'edit', uid, updatedArray);
                         }
                             
                         else 
-                        {
-                            showError(response.message);
-                        }
+                            showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + response.message + "<br><br>Fechando Formulário ...");
+                        
                     })
                     .withFailureHandler((err) => 
                     {
                         document.getElementById("loading").style.display = "none";
                         
                         console.error(err);
-                        showError("Houve um erro interno! Avise o setor de P&D.<br><br>Fechando Formulário ...");
-                                
+                        showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
+                                 
                         setTimeout(() =>
                         {
                             google.script.host.close();
                         }, 5000);
                     })
-                    .BeeCore("EditCompany", company.uid, data);              
-                break;
+                    .BeeCore("editCompany", uid, data); 
+                             
+                    break;
+                }
             }
         }
-    
+
     </script>
 </body>
 </html>
