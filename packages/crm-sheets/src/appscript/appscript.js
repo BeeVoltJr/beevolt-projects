@@ -16,7 +16,7 @@ let
 SHEET_TYPE = Object.freeze({
 
   main: 1,
-  user:  2,
+  user: 2,
 
 });
 
@@ -149,7 +149,7 @@ class Sheets
                     maxLen = cellValue.length;
             }
 
-            const calculatedWidth = Math.min(Math.max(maxLen * 8.5, 75), 250);
+            const calculatedWidth = Math.min(Math.max(maxLen * 8.5, 110), 250);
             this.ss.setColumnWidth(colIdx + 1, calculatedWidth);
         }
     }
@@ -182,6 +182,16 @@ class Sheets
     getRowCount()
     {
         return this.ss.getLastRow();
+    }
+
+    clearMainContent()
+    {
+        const lastRow = this.ss.getLastRow();
+        
+        if(lastRow < 2) return;
+
+        const range = this.ss.getRange(2, 1, this.ss.getLastRow(), this.ss.getLastColumn());
+        range.clearContent();
     }
 }
 
@@ -217,7 +227,10 @@ function onOpen()
         }
     }
 
+    headerList = (sheetType === SHEET_TYPE.user) ?
+    sheet.commom.init([ "LEADID", "EMPRESA", "EMAIL", "TELEFONE", "SITE", "RAMO DE ATIVIDADE", "INSIGHT", "SERVIÇO"]) :
     sheet.commom.init([ "LEADID", "EMPRESA", "EMAIL", "TELEFONE", "SITE", "RAMO DE ATIVIDADE", "INSIGHT", "SERVIÇO", "RESPONSÁVEL"]);
+    
     sheet.fu1.init(["teste1", "teste2", "teste3"]);
     sheet.fu2.init(["teste4", "teste5", "teste6"]);
     sheet.fu3.init(["teste7", "teste8", "teste9"]);
@@ -239,7 +252,7 @@ function loadSpreadSheet()
         res
     ;
     
-    const lastRow = sheet.commom.getRowCount();
+    const leadid = sheet.commom.getRowCount() - 1;
 
     switch(username)
     {
@@ -248,7 +261,7 @@ function loadSpreadSheet()
             try
             {
                 res = UrlFetchApp.fetch(
-                `${MAIN_URL}/api/companies/?start=${lastRow}&end=-1`,
+                `${MAIN_URL}/api/companies/?start=${leadid}&end=-1`,
                 {
                     method: 'GET',
                     headers:
@@ -274,7 +287,7 @@ function loadSpreadSheet()
             try
             {
                 res = UrlFetchApp.fetch(
-                `${MAIN_URL}/api/companies/?sub=${username}`,
+                `${MAIN_URL}/api/companies/?sub=${encodeURIComponent(username)}`,
                 {
                     method: 'GET',
                     headers:
@@ -309,16 +322,32 @@ function loadSpreadSheet()
         return 0;
     }
     
-    if(response.count === 0 && response.success) 
+    if(response.success) 
     {
-        SpreadsheetApp
-        .getUi()
-            .alert(`Planilha já está atualizada! Nenhuma empresa nova foi encontrada.`);
-        
-        return 1;
+        if(
+            (sheetType == SHEET_TYPE.main && response.count == 0) ||
+            (sheetType == SHEET_TYPE.user && response.count == (sheet.commom.getRowCount() - 1))
+        )
+        {
+            SpreadsheetApp
+            .getUi()
+                .alert(`Planilha já está atualizada! Nenhuma empresa nova foi encontrada.`);
+
+            return 1;
+        }
+
+        if(sheetType == SHEET_TYPE.user && response.count != (sheet.commom.getRowCount() - 1))
+        {
+           sheet.commom.clearMainContent();
+           sheet.commom.insertData(2, response.data);
+
+           return 1;
+        }
     }
 
-    sheet.commom.insertData(lastRow, response.data);
+    sheet.commom.insertData(leadid, response.data);
+
+    return 1;
 }
 
 function addSpreadSheet() 
@@ -363,7 +392,7 @@ function addSpreadSheet()
 
     const html = template.evaluate().setWidth(1024).setHeight(720);
 
-    const title = (sheetType === 'user') ? `${username} | Adicionar Empresa` : "Adicionar Empresa";
+    const title = (sheetType === SHEET_TYPE.user) ? `${username} | Adicionar Empresa` : "Adicionar Empresa";
 
     SpreadsheetApp
     .getUi()
@@ -415,13 +444,13 @@ function editSpreadSheet()
     const template      = HtmlService.createTemplateFromFile("forms");
 
     template.mode       = "edit";
-    template.user       = (sheetType === 'user') ? username : 'main';
+    template.user       = (sheetType === SHEET_TYPE.user) ? username : 'main';
     template.colabors   = null;
     template.company    = company;
 
     const html = template.evaluate().setWidth(1024).setHeight(720);
 
-    const title = (sheetType === 'user') ? `${username} | Editar Empresa` : "Editar Empresa";
+    const title = (sheetType === SHEET_TYPE.user) ? `${username} | Editar Empresa` : "Editar Empresa";
 
     SpreadsheetApp
     .getUi()
@@ -581,6 +610,8 @@ function addCompany(data)
             }
         });
 
+        changeSheet('Empresas Cadastradas', 'insert', null, data);  
+
         const json = JSON.parse(response.getContentText());
 
         return json;
@@ -597,8 +628,6 @@ function addCompany(data)
 
 function editCompany(uid, data) 
 {
-    console.log(uid, "TESTE");
-
     try 
     {
         const response = UrlFetchApp.fetch(
@@ -613,6 +642,8 @@ function editCompany(uid, data)
                 "ngrok-skip-browser-warning": "true"
             }
         });
+
+        changeSheet('Empresas Cadastradas', 'edit', uid, data);
 
         const json = JSON.parse(response.getContentText());
 

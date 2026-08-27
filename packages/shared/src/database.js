@@ -282,8 +282,7 @@ export async function GetCompaniesFromSubs(subscribers)
     COALESCE(website, 'NULL')       AS website,\
     COALESCE(actfield, 'NULL')      AS actfield,\
     COALESCE(insight, 'NULL')       AS insight,\
-    COALESCE(service, 'NULL')       AS service,\
-    COALESCE(subscribers, 'NULL')   AS subscribers",
+    COALESCE(service, 'NULL')       AS service",
     "subscribers = ?", subscribers);
 
     return result.companies;

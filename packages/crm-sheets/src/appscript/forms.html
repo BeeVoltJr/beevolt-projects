@@ -601,25 +601,6 @@
                             });
 
                             document.getElementById("subscribers").value = "";
-
-                            google.script.run.withSuccessHandler(() =>
-                            {
-                                setTimeout(() =>
-                                {
-                                    google.script.host.close();
-                                }, 1000);
-                            })
-                            .withFailureHandler(err =>
-                            {
-                                console.error(err);
-                                showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
-                        
-                                setTimeout(() =>
-                                {
-                                    google.script.host.close();
-                                }, 5000);
-                            })
-                            .BeeCore("changeSheet", 'Empresas Cadastradas', 'insert', null, data);  
                         }
                         
                         else 
@@ -636,7 +617,7 @@
                             google.script.host.close();
                         }, 5000);
                     })
-                    .BeeCore("addCompany", data);
+                    .addCompany(data);
 
                     break;
                 }
@@ -677,24 +658,7 @@
                         {
                             document.getElementById("success").style.display = "block";
 
-                            google.script.run.withSuccessHandler(() =>
-                            {
-                                setTimeout(() =>
-                                {
-                                    google.script.host.close();
-                                }, 1000);
-                            })
-                            .withFailureHandler(err =>
-                            {
-                                console.error(err);
-                                showError("Houve um erro interno! Avise o setor de P&D. Motivo: " + err.message + "<br><br>Fechando Formulário ...");
-                             
-                                setTimeout(() =>
-                                {
-                                    google.script.host.close();
-                                }, 5000);
-                            })
-                            .BeeCore("changeSheet", 'Empresas Cadastradas', 'edit', uid, updatedArray);
+
                         }
                             
                         else 
@@ -713,7 +677,7 @@
                             google.script.host.close();
                         }, 5000);
                     })
-                    .BeeCore("editCompany", uid, data); 
+                    .editCompany(uid, data); 
                              
                     break;
                 }

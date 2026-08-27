@@ -32,10 +32,10 @@ beeapp.listen(3000, async (err) => {});
 
 beeapp.use((req, res, next) =>
 {
-    // console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    console.log(`\n[${new Date().toISOString()}] ${req.method} ${req.url}`);
 
     // if(req.method === "POST" || req.method === "PUT")
-    //     console.log("data: ", req.body);
+    //console.log("data: ", req.body);
     
     next();
 });
@@ -58,7 +58,7 @@ export async function OnRequestCompanies(req, res)
         if(subscriber === 'none' && !isNaN(start) && !isNaN(end))
             payload = await GetCompaniesFromInterval(start, end);
         
-        else if(subscriber != 'none' && isNaN(start) && isNaN(end))
+        else if(subscriber != 'none')
             payload = await GetCompaniesFromSubs(subscriber);
         
         else
