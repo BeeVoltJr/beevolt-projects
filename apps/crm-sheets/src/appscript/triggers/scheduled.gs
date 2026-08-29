@@ -1,0 +1,3 @@
+function scheduledFollowUps() {
+    return ProcessFollowUps();
+}

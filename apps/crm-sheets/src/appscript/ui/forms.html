@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <style>
+        * { box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { margin: 0; padding: 40px; background: #332A21; color: #fff; }
+        .container { display: flex; flex-direction: column; gap: 12px; }
+        .header { display: flex; align-items: end; gap: 12px; }
+        .header-logo { width: 120px; height: 120px; border-radius: 14px; background: #ffd793; object-fit: contain; }
+        .header-title { font-size: 34px; font-weight: 700; color: #ffaa59; }
+        .header-subtitle { font-size: 18px; color: #ffd793; }
+        .title { font-size: 22px; font-weight: 700; margin: 10px 0 4px; text-align: center; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 14px; font-weight: 600; }
+        .required { color: #ff2523; }
+        input, textarea, select { width: 100%; padding: 10px 12px; border: 1px solid #3d2815; border-radius: 10px; background: #ffefdf; font-size: 13px; }
+        textarea { resize: vertical; min-height: 78px; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .uid-frame { padding: 12px; border-radius: 10px; background: #f9aa59; color: #111; font-weight: 700; text-align: center; }
+        .success, .error, .loading { display: none; border-radius: 10px; padding: 10px 12px; }
+        .success { background: #dcfce7; color: #166534; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .loading { background: #fff7ed; color: #9a3412; text-align: center; }
+        button { margin-top: 8px; padding: 12px; border: 0; border-radius: 12px; background: #ff7733; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; }
+        button:disabled { opacity: .7; cursor: not-allowed; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://drive.google.com/thumbnail?id=1OdblX03EtwBizB07s7bdcytNyJU2i7mp" class="header-logo">
+            <div>
+                <div class="header-title">BeeVolt JR</div>
+                <div class="header-subtitle">Nectar Track</div>
+            </div>
+        </div>
+
+        <div class="title"><?= dialogTitle ?></div>
+
+        <div id="loading" class="loading">Carregando contexto do formulário...</div>
+        <div id="error" class="error"></div>
+        <div id="success" class="success">Sucesso!</div>
+
+        <div id="uidBlock" class="field hidden">
+            <label>Lead UID</label>
+            <div id="uidField" class="uid-frame">LEAD-0000</div>
+        </div>
+
+        <div class="field">
+            <label>Nome da Empresa <span class="required">*</span></label>
+            <input id="name" autocomplete="off">
+        </div>
+
+        <div class="row">
+            <div class="field">
+                <label>Email <span class="required">*</span></label>
+                <input id="email" type="email" autocomplete="off">
+            </div>
+            <div class="field">
+                <label>Telefone <span class="required">*</span></label>
+                <input id="phone" autocomplete="off">
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Site</label>
+            <input id="website" placeholder="https://empresa.com.br" autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label>Campo de atuação <span class="required">*</span></label>
+            <textarea id="actfield"></textarea>
+        </div>
+
+        <div class="field">
+            <label>Insight da empresa <span class="required">*</span></label>
+            <textarea id="insight"></textarea>
+        </div>
+
+        <div class="field">
+            <label>Serviços prestados <span class="required">*</span></label>
+            <textarea id="service"></textarea>
+        </div>
+
+        <div id="ownerBlock" class="field">
+            <label>Colaborador <span class="required">*</span></label>
+            <select id="subscribers"></select>
+        </div>
+
+        <button id="submitButton" onclick="submitForm()">Salvar</button>
+    </div>
+
+    <script>
+        const bootstrap = {
+            mode: "<?= mode ?>",
+            companyUid: "<?= companyUid ?>",
+            dialogTitle: "<?= dialogTitle ?>"
+        };
+
+        let formContext = null;
+
+        const fields = ['name', 'email', 'phone', 'website', 'actfield', 'insight', 'service'];
+
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function showError(message) {
+            const error = $('error');
+            error.textContent = message;
+            error.style.display = 'block';
+        }
+
+        function clearMessages() {
+            $('error').style.display = 'none';
+            $('success').style.display = 'none';
+        }
+
+        function setLoading(value, message) {
+            $('loading').style.display = value ? 'block' : 'none';
+            if (message) {
+                $('loading').textContent = message;
+            }
+            $('submitButton').disabled = Boolean(value);
+        }
+
+        function invalidate(id) {
+            $(id).style.borderColor = '#ff2523';
+        }
+
+        function clearInvalid() {
+            [...document.querySelectorAll('input, textarea, select')].forEach(field => {
+                field.style.borderColor = '';
+            });
+        }
+
+        function setOwnerOptions(employees, selectedOwner) {
+            const select = $('subscribers');
+            select.innerHTML = '';
+
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = 'Selecione um responsável';
+            select.appendChild(empty);
+
+            employees.forEach(employee => {
+                const option = document.createElement('option');
+                option.value = employee.name;
+                option.textContent = employee.name;
+                if (selectedOwner && employee.name === selectedOwner) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+
+            if (selectedOwner && !employees.some(employee => employee.name === selectedOwner)) {
+                const fallback = document.createElement('option');
+                fallback.value = selectedOwner;
+                fallback.textContent = selectedOwner;
+                fallback.selected = true;
+                select.appendChild(fallback);
+            }
+        }
+
+        function fillForm(company) {
+            if (!company) {
+                return;
+            }
+
+            $('uidField').textContent = `LEAD-${String(company.uid || '').padStart(4, '0')}`;
+            $('name').value = company.name || '';
+            $('email').value = company.email || '';
+            $('phone').value = company.phone || '';
+            $('website').value = company.website || '';
+            $('actfield').value = company.actfield || '';
+            $('insight').value = company.insight || '';
+            $('service').value = company.service || '';
+            $('subscribers').value = company.subscribers || '';
+        }
+
+        function normalizeValue(value) {
+            return String(value == null ? '' : value).trim();
+        }
+
+        function buildPayload(mode) {
+            const payload = {
+                name: normalizeValue($('name').value),
+                email: normalizeValue($('email').value),
+                phone: normalizeValue($('phone').value),
+                website: normalizeValue($('website').value),
+                actfield: normalizeValue($('actfield').value),
+                insight: normalizeValue($('insight').value),
+                service: normalizeValue($('service').value)
+            };
+
+            if (formContext.permissions.canAssignEmployee) {
+                payload.subscribers = normalizeValue($('subscribers').value);
+            }
+
+            if (mode === 'edit' && formContext.company) {
+                payload.uid = formContext.company.uid;
+            }
+
+            return payload;
+        }
+
+        function validatePayload(payload, mode) {
+            const required = ['name', 'email', 'phone', 'actfield', 'insight', 'service'];
+
+            for (const key of required) {
+                if (!payload[key]) {
+                    invalidate(key);
+                    showError(`O campo "${key}" é obrigatório.`);
+                    return false;
+                }
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+                invalidate('email');
+                showError('Informe um email válido.');
+                return false;
+            }
+
+            if (formContext.permissions.canAssignEmployee && !payload.subscribers) {
+                invalidate('subscribers');
+                showError('Selecione um responsável.');
+                return false;
+            }
+
+            return true;
+        }
+
+        function submitForm() {
+            clearMessages();
+            clearInvalid();
+
+            if (!formContext) {
+                showError('Contexto do formulário não carregado.');
+                return;
+            }
+
+            const payload = buildPayload(formContext.mode);
+
+            if (!validatePayload(payload, formContext.mode)) {
+                return;
+            }
+
+            setLoading(true, 'Enviando informações...');
+
+            const successHandler = response => {
+                setLoading(false, 'Carregando contexto do formulário...');
+                $('success').style.display = 'block';
+                $('success').textContent = response && response.message ? response.message : 'Sucesso!';
+                setTimeout(() => google.script.host.close(), 1200);
+            };
+
+            const failureHandler = error => {
+                setLoading(false, 'Carregando contexto do formulário...');
+                showError(error && error.message ? error.message : 'Houve um erro inesperado.');
+            };
+
+            if (formContext.mode === 'edit') {
+                google.script.run
+                    .withSuccessHandler(successHandler)
+                    .withFailureHandler(failureHandler)
+                    .EditCompany(payload.uid, payload);
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(successHandler)
+                .withFailureHandler(failureHandler)
+                .AddCompany(payload);
+        }
+
+        function renderForm(context) {
+            formContext = context;
+            setLoading(false);
+
+            $('loading').textContent = '';
+            $('uidBlock').classList.toggle('hidden', context.mode !== 'edit');
+            $('ownerBlock').classList.toggle('hidden', !context.permissions.canAssignEmployee);
+            $('submitButton').textContent = context.mode === 'edit' ? 'Salvar Empresa' : 'Adicionar Empresa';
+
+            setOwnerOptions(context.employees || [], context.company ? context.company.subscribers : context.user.name);
+
+            if (context.mode === 'edit') {
+                fillForm(context.company);
+                $('uidField').textContent = `LEAD-${String(context.company && context.company.uid ? context.company.uid : '').padStart(4, '0')}`;
+            } else if (!context.permissions.canAssignEmployee) {
+                $('subscribers').innerHTML = '';
+                const option = document.createElement('option');
+                option.value = context.user.name;
+                option.textContent = context.user.name;
+                option.selected = true;
+                $('subscribers').appendChild(option);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            $('loading').style.display = 'block';
+            google.script.run
+                .withSuccessHandler(renderForm)
+                .withFailureHandler(error => {
+                    setLoading(false);
+                    showError(error && error.message ? error.message : 'Falha ao carregar o formulário.');
+                })
+                .GetFormContext(bootstrap.mode, bootstrap.companyUid);
+        });
+    </script>
+</body>
+</html>
