@@ -1,63 +1,35 @@
-import dotenv               from 'dotenv';
-import { REST, Routes, ApplicationCommandOptionType } from 'discord.js';
+import dotenv from 'dotenv';
+import { REST, Routes } from 'discord.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-dotenv.config();
+import { commandPayloads, loadCommandModules } from './loaders/command-loader.js';
+import { SendConsoleDebug, SendConsoleErr } from '@beevolt/logging';
 
-const commands = 
-[
-    {
-        name: 'empresas',
-        description: 'Vizualizar empresas cadastradas.',
-    },
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const commandsDir = path.join(__dirname, 'commands');
 
-    {
-        name: 'teste',
-        description: 'Apenas comando para DEBUG',
-        options:[
-            {
-                name: 'params1',
-                description: 'debug',
-                type: ApplicationCommandOptionType.String
-            },
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 
-            {
-                name: 'params2',
-                description: 'debug',
-                type: ApplicationCommandOptionType.String
-            },
+async function main() {
+    try {
+        const commands = await loadCommandModules(commandsDir);
+        const payload = commandPayloads(commands);
 
-            {
-                name: 'params3',
-                description: 'debug',
-                type: ApplicationCommandOptionType.String
-            }
-        ]    
-        
-    }
-];
+        const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-
-(async () => 
-{
-    try
-    {
-        console.log("[ BOT CMD ] Registrando slash commands em Beea no servidor BeeVolt\n");
+        SendConsoleDebug('BOT CMD', 'Registrando slash commands no servidor BeeVolt');
 
         await rest.put(
             Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
-            {
-                body: commands
-            }
-            
+            { body: payload }
         );
 
-        console.log("[ BOT CMD ] Comandos registrados com sucesso!\n");
+        SendConsoleDebug('BOT CMD', 'Comandos registrados com sucesso!');
+    } catch (error) {
+        SendConsoleErr('BOT CMD', error?.stack || error?.message || String(error));
+        process.exitCode = 1;
     }
+}
 
-    catch(error)
-    {
-        console.log(`[ ERRO BOT CMD ] Houve um erro: ${error}`);
-    }
-
-})();
+await main();

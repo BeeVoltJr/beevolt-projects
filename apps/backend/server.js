@@ -1,23 +1,35 @@
 import app from './app.js';
 
-const PORT = process.env.PORT || 3000;
+import 
+{
+    SendConsoleDebug, 
+    SendConsoleErr 
+} from '@beevolt/logging';
+
+const PORT = Number(process.env.PORT || 3000);
 
 const server = app.listen(PORT, () => 
 {
-    console.log(`[ BACKEND ] Servidor iniciado na porta ${PORT}`);
+    SendConsoleDebug('BACKEND', `Servidor iniciado na porta ${PORT}`);
 });
 
 function shutdown(signal) 
 {
-    console.log(`\n[ BACKEND ] Recebido ${signal}. Encerrando...`);
+    SendConsoleDebug('BACKEND', `Recebido ${signal}. Encerrando...`);
 
-    server.close(() => 
+    server.close(err => 
     {
-        console.log('[ BACKEND ] Servidor encerrado.');
+        if(err) 
+        {
+            SendConsoleErr('BACKEND', err.message || String(err));
+            process.exit(1);
+            return;
+        }
+
+        SendConsoleDebug('BACKEND', 'Servidor encerrado.');
         process.exit(0);
     });
-
 }
 
-process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));

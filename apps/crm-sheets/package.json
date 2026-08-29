@@ -2,7 +2,12 @@
   "name": "@beevolt/crm-sheets",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "deploy": "..."
+  },
+  "dependencies": {
+    "@beevolt/database": "1.0.0",
+    "@beevolt/logging": "1.0.0"
   }
 }

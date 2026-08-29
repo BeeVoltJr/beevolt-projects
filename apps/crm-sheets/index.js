@@ -1,15 +1,13 @@
 import 
 {   
-    beedb,
-    
+    beedb
+} from '@beevolt/database';
+
+import {
     LOG_TYPE,
     SendDiscordLog,
-    SendConsoleLog, 
-    SendConsoleErr,
-    SendConsoleWarn,
-    SendConsoleDebug 
-
-} from '@beevolt/shared';
+    SendConsoleDebug
+} from '@beevolt/logging';
 
 async function main() 
 {

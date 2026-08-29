@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "deploy": "npm run deploy --workspace=@beevolt/backend",
+    "deploy": "node main.js deploy",
     "dev": "node main.js dev",
     "start": "node main.js start"
   },

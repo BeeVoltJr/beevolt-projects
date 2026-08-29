@@ -1,46 +1,45 @@
-import express from 'express';
 import cors from 'cors';
+import express from 'express';
 
 import companyRoutes from './modules/companies/company.routes.js';
+import employeeRoutes from './modules/employees/employee.routes.js';
+import { SendConsoleDebug, SendConsoleErr } from '@beevolt/logging';
 
 const app = express();
 
+app.disable('x-powered-by');
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
-// HEALTH CHECK
+app.use((req, res, next) => {
+    SendConsoleDebug('BACKEND HTTP', `${req.method} ${req.originalUrl}`);
+    next();
+});
 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
     res.status(200).json({
         status: 'ok'
     });
 });
 
-// ROTAS
-
 app.use('/api/companies', companyRoutes);
+app.use('/api/employees', employeeRoutes);
 
-// 404 HANDLER
-
-app.use((req, res) => {
+app.use((_req, res) => {
     res.status(404).json({
         success: false,
         message: 'Endpoint não encontrado.'
     });
 });
 
-// ERRO HANDLER
-
-app.use((err, req, res, next) => 
-{
-
-    console.error('[ERROR]', err);
+app.use((err, _req, res, _next) => {
+    SendConsoleErr('BACKEND', err?.stack || err?.message || String(err));
 
     res.status(500).json({
         success: false,
         message: 'Erro interno do servidor.'
     });
-
 });
 
 export default app;
