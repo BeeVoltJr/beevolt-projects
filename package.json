@@ -2,12 +2,14 @@
   "name": "beevolt-projects",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "type": "module",
   "scripts": {
-    "start": "bash start.sh",
-    "dev:bot": "npm run dev --workspace=discord-bot",
-    "dev:crm": "npm run dev --workspace=crm-sheets"
-  }
+    "deploy": "npm run deploy --workspace=@beevolt/backend",
+    "dev": "node main.js dev",
+    "start": "node main.js start"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
